@@ -1,0 +1,55 @@
+:root {
+  --primary-blue: #005dff;
+  --light-blue: #e6f0ff;
+  --dark-blue: #004d99;
+  --text-dark: #1a1a1a;
+  --text-light: #868686;
+  --background-grey: #f8f9fa;
+  --border-color: #e9e9e9;
+  --card-bg: #ffffff;
+  --green: #28a745;
+}
+
+body { font-family: 'Poppins', sans-serif; }
+
+.main-content-container {
+  padding: 30px;
+  display: flex;
+  flex-direction: column;
+}
+
+.main-header {
+  display: flex;
+  justify-content: space-between;
+  padding: 20px;
+  background-color: var(--card-bg);
+  border-radius: 15px;
+}
+
+.user-profile {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.content-section {
+  background-color: var(--card-bg);
+  padding: 20px;
+  border-radius: 15px;
+  margin-top: 20px;
+}
+
+.stock-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.stock-card {
+  background-color: var(--background-grey);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  gap: 15px;
+}

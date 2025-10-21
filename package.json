@@ -1,5 +1,5 @@
 {
-  "name": "cardio-web",
+  "name": "cardio",
   "version": "0.1.0",
   "private": true,
   "dependencies": {
@@ -9,7 +9,14 @@
     "@testing-library/user-event": "^13.5.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
+    "react-hook-form": "^7.64.0",
+    "react-icons": "^5.5.0",
+    "react-images-uploading": "^3.1.7",
+    "react-otp-input": "^3.1.1",
+    "react-router-dom": "^7.9.2",
     "react-scripts": "5.0.1",
+    "react-toastify": "^11.0.5",
+    "recharts": "^3.2.1",
     "web-vitals": "^2.1.4"
   },
   "scripts": {

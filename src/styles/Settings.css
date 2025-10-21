@@ -1,0 +1,81 @@
+.main-content {
+  margin-left: 80px;
+  /* padding-right: 10px;
+  padding-left: 10px; */
+}
+.settings-profile-card {
+  background: #fff;
+  border: 1px solid #cce4ff;
+  border-radius: 8px;
+  padding: 24px 32px;
+  margin: 24px auto;
+  max-width: 800px;
+  box-sizing: border-box;
+}
+
+.settings-profile-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.settings-profile-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 180px;
+}
+
+.settings-profile-avatar {
+  width: 80px;
+  height: 110px;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+.settings-profile-details {
+  text-align: center;
+}
+
+.settings-profile-name {
+  font-size: 20px;
+  font-weight: 500;
+}
+
+.settings-profile-role {
+  font-size: 15px;
+  color: #666;
+}
+
+.settings-profile-stats {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  flex: 1;
+  justify-content: center;
+}
+
+.settings-profile-stat {
+  text-align: center;
+  min-width: 120px;
+}
+
+.settings-profile-stat-label {
+  font-size: 16px;
+  color: #444;
+  margin-bottom: 8px;
+}
+
+.settings-profile-stat-value {
+  font-size: 28px;
+  font-weight: 600;
+  color: #222;
+}
+
+.settings-profile-divider {
+  width: 1px;
+  height: 48px;
+  background: #ddd;
+  margin: 0 24px;
+}

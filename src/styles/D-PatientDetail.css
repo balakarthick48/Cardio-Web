@@ -1,0 +1,105 @@
+.patient-profile {
+  font-family: Arial, sans-serif;
+  padding: 20px;
+  background: #fafafa;
+  color: #333;
+}
+
+/* Header */
+.patient-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 25px;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 15px;
+}
+.patient-info {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+.patient-avatar {
+  width: 60px;
+  border-radius: 50%;
+}
+.status-btns {
+  display: flex;
+  gap: 8px;
+}
+.status {
+  padding: 5px 12px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+}
+.processing {
+  background: #e5f0ff;
+  color: #0066cc;
+}
+.completed {
+  background: #d4f5dd;
+  color: #1b8a3e;
+}
+.patient-contact {
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* Sections */
+.patient-section {
+  margin: 20px 0;
+}
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+.grid-3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 20px;
+}
+.card {
+  background: #fff;
+  padding: 15px;
+  border: 1px solid #eee;
+  border-radius: 8px;
+}
+.card h4, .card h5 {
+  margin-bottom: 10px;
+  color: #0066cc;
+}
+.edit {
+  color: #0066cc;
+  cursor: pointer;
+}
+.done-btn {
+  margin-top: 10px;
+  padding: 6px 14px;
+  border: none;
+  border-radius: 6px;
+  background: #0066cc;
+  color: white;
+  cursor: pointer;
+}
+
+/* Prescription Table */
+.prescription-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+}
+.prescription-table th, .prescription-table td {
+  border: 1px solid #ddd;
+  padding: 10px;
+  text-align: center;
+}
+.prescription-table th {
+  background: #f5f5f5;
+  color: #333;
+}
+.prescription-table td:first-child {
+  font-weight: bold;
+}

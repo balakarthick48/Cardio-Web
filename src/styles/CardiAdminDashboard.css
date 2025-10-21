@@ -1,0 +1,148 @@
+:root {
+  --primary-blue: #005dff;
+  --light-blue: #e6f0ff;
+  --text-dark: #1a1a1a;
+  --text-light: #868686;
+  --background-grey: #f8f9fa;
+  --border-color: #e9e9e9;
+  --card-bg: #ffffff;
+  --green: #28a745;
+  --orange: #fd7e14;
+  --red: #ff3838;
+  --shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+}
+
+body {
+  font-family: 'Poppins', sans-serif;
+  background-color: var(--background-grey);
+  color: var(--text-dark);
+}
+
+.main-container {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 30px;
+  padding: 30px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.search-bar {
+  display: flex;
+  align-items: center;
+  background-color: white;
+  padding: 8px 15px;
+  border-radius: 50px;
+  width: 300px;
+  border: 1px solid var(--border-color);
+}
+
+.search-bar input {
+  border: none;
+  outline: none;
+  flex-grow: 1;
+}
+
+.notification-bell {
+  position: relative;
+  background-color: white;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-color);
+}
+
+.notification-bell .dot {
+  position: absolute;
+  top: 8px;
+  right: 9px;
+  width: 8px;
+  height: 8px;
+  background-color: var(--red);
+  border-radius: 50%;
+  border: 2px solid white;
+}
+
+.appointment-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-radius: 12px;
+  color: white;
+}
+
+.appointment-card.blue { background-color: var(--primary-blue); }
+.appointment-card.red { background-color: var(--red); }
+
+.profile-sidebar {
+  background-color: var(--card-bg);
+  padding: 30px;
+  border-radius: 20px;
+  box-shadow: var(--shadow);
+}
+.dashboard-content {
+  display: flex;
+  gap: 32px;
+  margin: 32px;
+  padding-bottom: 50px;
+}
+
+.charts-section {
+  flex: 2;
+  background: #fff;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+}
+.chart-placeholder {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  height: 180px;
+  margin: 24px 0;
+}
+.chart-bar {
+  width: 18px;
+  height: 80px;
+  background: #005dff;
+  border-radius: 6px 6px 0 0;
+}
+.chart-legend {
+  margin-top: 12px;
+  font-size: 14px;
+}
+.legend-blue {
+  display: inline-block;
+  width: 16px;
+  height: 8px;
+  background: #005dff;
+  border-radius: 4px;
+  margin-right: 6px;
+}
+.legend-green {
+  display: inline-block;
+  width: 16px;
+  height: 8px;
+  background: #1ecb4f;
+  border-radius: 4px;
+  margin: 0 12px 0 6px;
+}
+
+.doctor-performance {
+  flex: 1;
+  background: #fff;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
