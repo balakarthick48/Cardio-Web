@@ -4,10 +4,10 @@ import './App.css';
 import Admindashboard from './pages/adminpages/A-Dashboard'
 import Doctordashboard from './pages/doctorpages/D-Dashboard'
 import Appointment from './pages/doctorpages/Appointment'
-import Login from './pages/cardiodoctorauth/Login'
-import ForgotPassword from './pages/cardiodoctorauth/ForgotPassword'
-import OtpVerification from './pages/cardiodoctorauth/OtpVerification'
-import CreatePassword from './pages/cardiodoctorauth/CreatePassword'
+import Login from './pages/cardioDoctorAuth/Login'
+import ForgotPassword from "./pages/cardioDoctorAuth/ForgotPassword";
+import OtpVerification from './pages/cardioDoctorAuth/OtpVerification'
+import CreatePassword from './pages/cardioDoctorAuth/CreatePassword'
 import PatientDetail from "./pages/doctorpages/D-PatientDetail";
 import PatientList from "./pages/doctorpages/D-PatientList";
 import AdminPatientList from "./pages/adminpages/A-PatientList";

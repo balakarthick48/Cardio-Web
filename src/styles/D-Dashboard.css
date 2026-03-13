@@ -353,3 +353,86 @@
   background: #2563eb;
   color: #fff;
 }
+
+.dp-tab-bar {
+  display: inline-flex;
+  background: #ffffff;
+  border-radius: 6px;
+  margin: 16px 20px 16px;
+  padding: 2px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+}
+
+.dp-tab {
+  border: none;
+  background: transparent;
+  padding: 8px 18px;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  color: #111827;
+  font-weight: 500;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.dp-tab + .dp-tab {
+  margin-left: 0;
+}
+
+.dp-tab.active {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.appointment-history-section {
+  margin: 20px;
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  padding: 16px 20px;
+}
+
+.appointment-history-filters {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+  align-items: flex-end;
+}
+
+.appointment-history-field {
+  display: flex;
+  flex-direction: column;
+  min-width: 220px;
+  flex: 1;
+}
+
+.appointment-history-field label {
+  font-size: 13px;
+  color: #6b7280;
+  margin-bottom: 4px;
+}
+
+.appointment-history-field input {
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  font-size: 14px;
+}
+
+.appointment-history-search-btn {
+  padding: 10px 20px;
+  border-radius: 6px;
+  border: none;
+  background-color: #2563eb;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  margin-left: auto;
+}
+
+.appointment-history-search-btn:hover {
+  background-color: #1d4ed8;
+}
