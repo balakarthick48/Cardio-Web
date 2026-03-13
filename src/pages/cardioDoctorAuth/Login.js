@@ -40,6 +40,8 @@ const Login = () => {
             if (response.ok) {
                 setLogin(data);
                 toast.success(data.message);
+                    //   localStorage.setItem('resetEmail', email);
+                // localStorage.setItem('user', JSON.stringify(data.doctor));  
                 // navigate('/admindashboard'); // Redirect to dashboard
                 setTimeout(() => {
                     navigate('/doctordashboard'); // Redirect to dashboard after 3 seconds
@@ -80,7 +82,7 @@ const Login = () => {
             {/* <ToastContainer /> */}
             {/* Left side doctor image */}
             <div className="login-left">
-                <img src={doctorImage} alt="Doctor" className="doctor-img" />
+                {/* <img src={doctorImage} alt="Doctor" className="doctor-img" /> */}
             </div>
 
             {/* Right side form */}

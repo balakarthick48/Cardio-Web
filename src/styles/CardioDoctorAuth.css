@@ -38,11 +38,17 @@
 .login-container {
   display: flex;
   height: 100vh;
-  width: 95%;
-  background: url("../assets/images/BG-Login.png") no-repeat center center;
-  background-size: auto 110%;
+  width: auto;
+  background: url("../assets/images/doctorbg.png");
+  background-size: auto 125%;
 }
-
+.login-containeradmin {
+  display: flex;
+  height: 100vh;
+  width: auto;
+  background: url("../assets/images/adminbg.png");
+  background-size: auto 125%;
+}
 /* Left side doctor */
 .login-left {
   flex: 1;
@@ -92,12 +98,13 @@
 
 .login-title {
   font-size: 26px;
+  color: #ffffff;
   font-weight: bold;
   margin: 10px 0;
 }
 
 .login-subtitle {
-  color: var(--text-light);
+   color: #ffffff;
   margin-bottom: 25px;
 }
 
@@ -106,6 +113,7 @@
 }
 
 .form-group label {
+  color: #ffffff;
   display: block;
   font-weight: 500;
   margin-bottom: 6px;
@@ -141,7 +149,8 @@
 }
 
 .remember-me {
-  display: flex;
+  /* display: flex; */
+    color: #ffffff;
   align-items: center;
 }
 

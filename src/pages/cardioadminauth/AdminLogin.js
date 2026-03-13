@@ -78,11 +78,11 @@ const AdminLogin = () => {
     }
 
     return (
-        <div className="login-container">
+        <div className="login-containeradmin">
            {/* <ToastContainer /> */}
             {/* Left side doctor image */}
             <div className="login-left">
-                <img src={doctorImage} alt="Doctor" className="doctor-img" />
+                {/* <img src={doctorImage} alt="Doctor" className="doctor-img" /> */}
             </div>
 
             {/* Right side form */}

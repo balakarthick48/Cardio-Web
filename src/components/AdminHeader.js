@@ -9,15 +9,22 @@ const pathToTitle = {
   "/admindashboard": "Dashboard",
   "/adminappointment": "Appointment",
   "/adminpatient-detail": "Patient",
+  "/doctoradmission": "Admission",
+  "/adminonspotregister": "On-Spot-Register",
+  "/doctoronboardregister": "Doctor-Onboard-Register",
 //   "/doctordashboard": "Doctordashboard",
-//   "/settings": "Settings"
+  "/settings": "Settings",
+  "/adminpatientlist": "Patientlist"
 };
 
 const AdminHeader = ({  onUserAvatarClick, onAvatarClick }) => {
   const [showProfile, setShowProfile] = useState(false);
    const location = useLocation();
     const selectedTitle = pathToTitle[location.pathname] || "Dashboard";
-      const userName = localStorage.getItem('resetEmail') || "User"; // Get from localStorage
+
+    // const user = JSON.parse(localStorage.getItem(('resetEmail')));
+    // const userName = user?.name || user?.email || localStorage.getItem('resetEmail') || 'User';
+      const userName = localStorage.getItem('userName') || localStorage.getItem('email') || localStorage.getItem('resetEmail') || "User";
 
   return (
     <header className="app-header">

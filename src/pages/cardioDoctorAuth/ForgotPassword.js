@@ -45,7 +45,7 @@ const ForgotPassword = () => {
   return (
     <div className="login-container">
       <div className="login-left">
-        <img src={doctorImage}alt="Doctor" className="doctor-img" />
+        {/* <img src={doctorImage}alt="Doctor" className="doctor-img" /> */}
       </div>
       <div className="login-right">
          <div className="login-header">

@@ -11,7 +11,7 @@
   justify-content: space-between;
   align-items: flex-start;
   margin-bottom: 25px;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid #383737;
   padding-bottom: 15px;
 }
 .patient-info {
@@ -20,7 +20,7 @@
   gap: 15px;
 }
 .patient-avatar {
-  width: 60px;
+  width: 100px;
   border-radius: 50%;
 }
 .status-btns {

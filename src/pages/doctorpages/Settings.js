@@ -10,13 +10,16 @@ export default function Settings() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [rating,setRatings] = useState([]);
-
+    const [appointment, setAppointment] = useState([]);
+    const [patients, setPatients] = useState([]);
+     const rawEmail = localStorage.getItem('resetEmail') || '';
+    const name = rawEmail.split('@')[0].replace(/[0-9]/g, '').trim();
+    
         const getRatings = async (e) => {
         setLoading(true);
         setError('');
         try {
             let url = `${API_BASE_URL}doctor/averageRating`;
-            // url = 'https://mocki.io/v1/a5a086db-eb2d-40e6-98af-1181da3215af'
             const response = await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -35,8 +38,58 @@ export default function Settings() {
         setLoading(false);
     };
 
+        const getAppointment = async () => {
+            setLoading(true);
+            setError('');
+            try {
+                let url = `${API_BASE_URL}doctor/getappointments`;
+                console.log('Fetching:', url);
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                console.log('Response status:', response.status);
+                const data = await response.json();
+                console.log('appointment...:', data);
+                if (response.ok) {
+                    setAppointment(Array.isArray(data.data) ? data.data : []);
+                } else {
+                    setError(data.message || 'Failed to fetch patients detail');
+                }
+            } catch (err) {
+                setError('Network erroaa');
+            }
+            setLoading(false);
+        };
+
+            const getPatients = async () => {
+        setLoading(true);
+        setError('');
+        try {
+            let url = `${API_BASE_URL}patient/getallpatientdetailsAll`;
+            console.log('Fetching:', url);
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' },
+            });
+            console.log('Response status:', response.status);
+            const data = await response.json();
+            console.log('patients response:', data);
+            if (response.ok) {
+                setPatients(data.data);
+            } else {
+                setError(data.message || 'Failed to fetch patients detail');
+            }
+        } catch (err) {
+            setError('Network erroaa');
+        }
+        setLoading(false);
+    };
+
     useEffect(() => {        
         getRatings(); 
+        getAppointment();
+        getPatients();
          }, []);
 console.log('@ratings',rating);
   return (
@@ -51,19 +104,19 @@ console.log('@ratings',rating);
         <div className="settings-profile-info">
           <img src={DoctorImg} alt="Doctor" className="settings-profile-avatar" />
           <div className="settings-profile-details">
-            <div className="settings-profile-name">Dr. Sekar M.D</div>
+            <div className="settings-profile-name">Dr. {name} M.D</div>
             <div className="settings-profile-role">Cardiologist</div>
           </div>
         </div>
         <div className="settings-profile-stats">
           <div className="settings-profile-stat">
             <div className="settings-profile-stat-label">Appointments</div>
-            <div className="settings-profile-stat-value">4250</div>
+            <div className="settings-profile-stat-value">{appointment.length}</div>
           </div>
           <div className="settings-profile-divider" />
           <div className="settings-profile-stat">
             <div className="settings-profile-stat-label">Total Patients</div>
-            <div className="settings-profile-stat-value">1.2K</div>
+            <div className="settings-profile-stat-value">{patients.length}</div>
           </div>
           <div className="settings-profile-divider" />
           <div className="settings-profile-stat">

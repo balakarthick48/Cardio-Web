@@ -7,6 +7,8 @@ import {
   FaRupeeSign,
   FaCog,
   FaSignOutAlt,
+  FaChartLine, 
+  FaBuffer
 } from "react-icons/fa";
 import {Link, NavLink} from 'react-router-dom';
 import { BiSolidCoinStack  } from "react-icons/bi";
@@ -14,6 +16,8 @@ import HeartWhite from "../assets/images/WhiteHeart.png";
 import Payroll from "../assets/images/Frame.png";
 import Appointment from "../assets/images/Appoinment.png";
 import Dashboard from "../assets/images/Dashboard.png";
+import Admission from "../assets/images/Admission.png";
+import FrontDesk from "../assets/images/Icon4.png";
 
 const menuItems = [
 //  { key: "logo", icon: <img
@@ -23,10 +27,13 @@ const menuItems = [
 //             className="splash-logo"
 //           />,  path: "/" },
   // { key: "registerusers", icon: <FaUsers/>, label: "New Users", path: "/registerusers" },
+  { key: "frontdesk", icon: <FaBuffer size={23}/>  , label: "FrontDesk", path: "/adminfrontdesk" },
   { key: "dashboard", icon: <img src={Dashboard} style={{ width: '20px', height: '20px' }} />, label: "Dashboard", path: "/doctordashboard" },
   { key: "appointment", icon:  <img  src={Appointment} style={{ width: '25px', height: '25px' }} />   , label: "Appointment", path: "/appointment" },
-  { key: "patient", icon:  <FaUsers size={20}/>   , label: "Patients", path: "/patient-detail" },
-  { key: "financial", icon:  <FaRupeeSign size={20}/>   , label: "Financial", path: "/doctordashboard" },
+  { key: "admission", icon:  <img  src={Admission} style={{ width: '25px', height: '25px' }} />   , label: "Admission", path: "/doctoradmission" },
+  { key: "patient", icon:  <FaUsers size={20}/>   , label: "Patients", path: "/patientlist" },
+  // { key: "financial", icon:  <FaRupeeSign size={20}/>   , label: "Financial", path: "/doctordashboard" },
+    { key: "report", icon:  <FaChartLine size={20}/>   , label: "Report", path: "/doctorreport" },
   { key: "inventory", icon:  <BiSolidCoinStack size={20}/>   , label: "Inventory", path: "/schedule" },
   { key: "payroll", icon:  <img src={Payroll} style={{ width: '30px', height: '25px' }}/>  , label: "Payroll", path: "/schedule" },
   { key: "settings", icon:  <FaCog size={20}/>   , label: "Settings", path: "/settings" },

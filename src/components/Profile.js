@@ -81,7 +81,6 @@ export default function Profile() {
         setError('');
         try {
             let url = `${API_BASE_URL}doctor/averageRating`;
-            // url = 'https://mocki.io/v1/a5a086db-eb2d-40e6-98af-1181da3215af'
             const response = await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -128,12 +127,12 @@ export default function Profile() {
         setLoading(true);
         setError('');
         try {
-            let url = `${API_BASE_URL}patient/getAllPatientDetails`;
+            let url = `${API_BASE_URL}patient/getallpatientdetailsAll`;
             console.log('Fetching:', url);
             const response = await fetch(url, {
-                method: 'POST',
+                method: 'GET',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ month: 9 })
+                // body: JSON.stringify({ month: 9 })
             });
             console.log('Response status:', response.status);
             const data = await response.json();
@@ -192,15 +191,17 @@ export default function Profile() {
 
             <div className="upcoming">
                 <h4>Upcoming Appointments</h4>
-                <p>
+                {/* <p>
                     <b>August 20, 2025</b>
-                </p>
+                </p> */}
                 <ul>
                     <li>
-                        <b>8:30 PM - 9:00 PM</b> {emergencyAppointment[0]?.patientName} — {emergencyAppointment[0]?.problem}
+                        {/* <b>8:30 PM - 9:00 PM</b> */}
+                         {upcomingAppointment[0]?.patientName} — {upcomingAppointment[0]?.problem}
                     </li>
                     <li>
-                        <b>9:00 PM - 9:30 PM</b> {emergencyAppointment[1]?.patientName} — {emergencyAppointment[1]?.problem}
+                        {/* <b>9:00 PM - 9:30 PM</b>  */}
+                        {upcomingAppointment[1]?.patientName} — {upcomingAppointment[1]?.problem}
                     </li>
                 </ul>
             </div>

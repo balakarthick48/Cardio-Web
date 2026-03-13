@@ -103,7 +103,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 5px;
 }
 
 .sidebar-link {
@@ -125,11 +125,11 @@
 }
 
 .sidebar-icon {
-  margin-bottom: 2px;
+  margin-bottom: 2  px;
 }
 
 .sidebar-label {
-  font-size: 12px;
+  font-size: 10px;
   margin-top: 2px;
   text-align: center;
 }

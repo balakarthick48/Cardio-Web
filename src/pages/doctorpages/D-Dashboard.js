@@ -10,111 +10,11 @@ import Icon3 from '../../assets/images/Icon3.png';
 import { FaArrowLeft, FaArrowRight } from 'react-icons/fa';
 import { Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import API_BASE_URL from '../../config';
-
-// const patients = [
-//   {
-//     id: 1,
-//     patientName: "Arjun Kumar",
-//     gender: "Male",
-//     email: "arjun.kumar@example.com",
-//     city: "Chennai",
-//     contactNumber: "+91 9876543210",
-//     problems: "Chest Pain, High Blood Pressure",
-//     history: "Diabetes for 5 years, Smoker"
-//   },
-//   {
-//     id: 2,
-//     patientName: "Priya Ramesh",
-//     gender: "Female",
-//     email: "priya.ramesh@example.com",
-//     city: "Bangalore",
-//     contactNumber: "+91 9123456780",
-//     problems: "Frequent Headaches",
-//     history: "Migraines since 2018"
-//   },
-//   {
-//     id: 3,
-//     patientName: "Vikram Singh",
-//     gender: "Male",
-//     email: "vikram.singh@example.com",
-//     city: "Delhi",
-//     contactNumber: "+91 9988776655",
-//     problems: "Breathing Difficulty",
-//     history: "Asthma since childhood"
-//   },
-//   {
-//     id: 4,
-//     patientName: "Anjali Sharma",
-//     gender: "Female",
-//     email: "anjali.sharma@example.com",
-//     city: "Hyderabad",
-//     contactNumber: "+91 9876123450",
-//     problems: "Irregular Heartbeat",
-//     history: "Family history of heart disease"
-//   },
-//   {
-//     id: 5,
-//     patientName: "Ravi Teja",
-//     gender: "Male",
-//     email: "ravi.teja@example.com",
-//     city: "Mumbai",
-//     contactNumber: "+91 9123456123",
-//     problems: "Severe Back Pain",
-//     history: "Slip disc diagnosed in 2022"
-//   },
-//   {
-//     id: 6,
-//     patientName: "Meera Nair",
-//     gender: "Female",
-//     email: "meera.nair@example.com",
-//     city: "Kochi",
-//     contactNumber: "+91 9012345678",
-//     problems: "Frequent Fever, Weakness",
-//     history: "Thyroid imbalance since 2021"
-//   },
-//   {
-//     id: 7,
-//     patientName: "Suresh Iyer",
-//     gender: "Male",
-//     email: "suresh.iyer@example.com",
-//     city: "Pune",
-//     contactNumber: "+91 9098765432",
-//     problems: "Obesity, Joint Pain",
-//     history: "High cholesterol, sedentary lifestyle"
-//   },
-//   {
-//     id: 8,
-//     patientName: "Divya Menon",
-//     gender: "Female",
-//     email: "divya.menon@example.com",
-//     city: "Trivandrum",
-//     contactNumber: "+91 9345678123",
-//     problems: "Chest Tightness",
-//     history: "Mild heart murmur detected in 2020"
-//   },
-//   {
-//     id: 9,
-//     patientName: "Rahul Verma",
-//     gender: "Male",
-//     email: "rahul.verma@example.com",
-//     city: "Jaipur",
-//     contactNumber: "+91 9456123789",
-//     problems: "Frequent Fatigue",
-//     history: "Vitamin D deficiency, borderline diabetes"
-//   },
-//   {
-//     id: 10,
-//     patientName: "Sneha Pillai",
-//     gender: "Female",
-//     email: "sneha.pillai@example.com",
-//     city: "Chandigarh",
-//     contactNumber: "+91 9234567812",
-//     problems: "Anxiety, Insomnia",
-//     history: "Stress related issues since 2020"
-//   }
-// ];
+import { ToastContainer, toast } from 'react-toastify';
+import { useNavigate } from 'react-router-dom';
 
 const Doctordashboard = () => {
+    const navigate = useNavigate();
     const [currentPage, setCurrentPage] = useState(1);
     const rowsPerPage = 5; // Define number of rows per page
     const [searchTerm, setSearchTerm] = useState('');
@@ -122,10 +22,56 @@ const Doctordashboard = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [patients, setPatients] = useState([]);
+    const [totalAppointment, setTotalAppointment] = useState([]);
     const [eachmonthpatients, setEachMonthPatients] = useState([]);
     const [todayappointments, setTodayAppointments] = useState([]);
     const [upcomingAppointment, setUpcomingAppointment] = useState([]);
     const [emergencyAppointment, setEmergencyAppointment] = useState([]);
+    const [updateappointment, setUpdateappointment] = useState([]);
+    const [appointment, setAppointment] = useState([]);
+    const [dashboardData, setDashboardData] = useState(null);
+    const [filterType, setFilterType] = useState('monthly'); // 'daily' or 'monthly'
+    const [selectedDate, setSelectedDate] = useState(''); // Format: YYYY-MM-DD
+    const [selectedMonth, setSelectedMonth] = useState(''); // Format: YYYY-MM
+    const [selectedYear, setSelectedYear] = useState('');
+
+    // Format date to DD.MM.YYYY for display
+    const formatDateDisplay = (dateString) => {
+        if (!dateString) return '';
+        const date = new Date(dateString);
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        return `${day}.${month}.${year}`;
+    };
+
+    // Format month to MMM YYYY for display
+    const formatMonthDisplay = (monthString) => {
+        if (!monthString) return '';
+        const [year, month] = monthString.split('-');
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        return `${monthNames[parseInt(month) - 1]}${year}`;
+    };
+
+    // Format time from slotTime (HH:MM:SS) or fallback to slotDate
+    const formatTimeDisplay = (timeString, slotDate) => {
+        if (timeString) {
+            // return HH:MM from HH:MM:SS
+            return timeString.slice(0, 5);
+        }
+        if (!slotDate) return '';
+        try {
+            return new Date(slotDate).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' });
+        } catch (err) {
+            return '';
+        }
+    };
+
+    // Get today's date in YYYY-MM-DD format
+    const getTodayDate = () => {
+        const today = new Date();
+        return today.toISOString().split('T')[0];
+    };
 
     // Pagination + Search logic
     const filteredUsers = patients.filter(
@@ -146,12 +92,13 @@ const Doctordashboard = () => {
         setLoading(true);
         setError('');
         try {
-            let url = `${API_BASE_URL}patient/getAllPatientDetails`;
+            // let url = `${API_BASE_URL}patient/getAllPatientDetails`;
+            let url = `${API_BASE_URL}patient/getallpatientdetailsAll`;
             console.log('Fetching:', url);
             const response = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ month: 9 })
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' }
+                // body: JSON.stringify({ month: 12 })
             });
             console.log('Response status:', response.status);
             const data = await response.json();
@@ -167,7 +114,7 @@ const Doctordashboard = () => {
         setLoading(false);
     };
 
-        const getPatientsEachmonth = async () => {
+    const getPatientsEachmonth = async () => {
         setLoading(true);
         setError('');
         try {
@@ -175,7 +122,7 @@ const Doctordashboard = () => {
             console.log('Fetching:', url);
             const response = await fetch(url, {
                 method: 'GET',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json' }
             });
             console.log('Response status:', response.status);
             const data = await response.json();
@@ -230,6 +177,7 @@ const Doctordashboard = () => {
             console.log('emergencyAppointment response:', data);
             if (response.ok) {
                 setEmergencyAppointment(data.emergencyAppointments);
+                console.log('Emergency Appointments:', data.emergencyAppointments);
             } else {
                 setError(data.message || 'Failed to fetch emergencyAppointment detail');
             }
@@ -239,28 +187,174 @@ const Doctordashboard = () => {
         setLoading(false);
     };
 
-         const getTodayAppointment = async () => {
-      setLoading(true);
-      setError('');
-      try {
-        let url = `${API_BASE_URL}doctor/TodayAppointments`;
-        console.log('Fetching:', url);
-        const response = await fetch(url, {
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json' }
-        });
+
+    const getTodayAppointment = async () => {
+        setLoading(true);
+        setError('');
+        try {
+            let url = `${API_BASE_URL}patient/TodayAppointments`;
+            console.log('Fetching:', url);
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' }
+            });
             console.log('Resp status:', response.status);
-        const data = await response.json();
+            const data = await response.json();
             console.log('todayAppointmen!!... response:', data);
-        if (response.ok) {
-          setTodayAppointments(Array.isArray(data) ? data : []);
-        } else {
-          setError(data.message || 'Failed to fetch patients detail');
+            if (response.ok) {
+                setTodayAppointments(Array.isArray(data) ? data : []);
+            } else {
+                setError(data.message || 'Failed to fetch patients detail');
+            }
+        } catch (err) {
+            setError('Network erroaa');
         }
-      } catch (err) {
-        setError('Network erroaa');
-      }
-      setLoading(false);
+        setLoading(false);
+    };
+
+    const getUpdateappointment = async (appointmentId, status) => {
+        if (!appointmentId || !status) return;
+        setLoading(true);
+        setError('');
+        try {
+            let url = `${API_BASE_URL}admin/update-appointment-status`;
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ appointmentId, status })
+            });
+            const data = await response.json();
+            if (response.ok) {
+                setUpdateappointment(data);
+                toast.success(data.message || `Appointment., ${status}d`);
+                getAppointment();
+                // setSelectedCard(null);
+                // setSelectedCardTime('');
+            } else {
+                setUpdateappointment([]);
+                toast.error(data.message || 'Failed to update appointment//');
+                setError(data.message || 'Failed');
+            }
+            // console.log('prescriptions___', data.existingMedicines);
+        } catch (err) {
+            toast.error('Network error');
+            setError('Network error');
+        }
+        setLoading(false);
+    };
+
+    const getAppointment = async () => {
+        setLoading(true);
+        setError('');
+        try {
+            // let url = `${API_BASE_URL}doctor/getappointments`; //allapointment
+            let url = `${API_BASE_URL}patient/getappointments`;
+            console.log('Fetching:', url);
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            console.log('Response status:', response.status);
+            const data = await response.json();
+            console.log('appointment...:', data);
+            if (response.ok) {
+                setAppointment(Array.isArray(data.data) ? data.data : []);
+            } else {
+                setError(data.message || 'Failed to fetch patients detail');
+            }
+        } catch (err) {
+            setError('Network erroaa');
+        }
+        setLoading(false);
+    };
+
+        const getTotalAppointment = async (month, year) => {
+            setLoading(true);
+            setError('');
+            try {
+                // Ensure month is 2-digit string
+                let monthStr = month;
+                let yearStr = year;
+                if (month && typeof month === 'string' && month.includes('-')) {
+                    // If month is in YYYY-MM format
+                    const parts = month.split('-');
+                    yearStr = parts[0];
+                    monthStr = parts[1];
+                }
+                if (monthStr && monthStr.length === 1) monthStr = '0' + monthStr;
+                let url = `${API_BASE_URL}patient/appointments/date_month?month=${monthStr || ''}&year=${yearStr || ''}`;
+                console.log('Fetchingtotal:', url);
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                console.log('Response status:', response.status);
+                const data = await response.json();
+                console.log('appointment...total:', data);
+                if (response.ok) {
+                    setTotalAppointment(Array.isArray(data.data) ? data.data : []);
+                } else {
+                    setError(data.message || 'Failed to fetch patients detail');
+                }
+            } catch (err) {
+                setError('Network erroaa');
+            }
+            setLoading(false);
+        };
+
+                const getDashboardData = async () => {
+            setLoading(true);
+        setError('');
+        try {
+            // Extract month and year from selectedMonth (format: 'YYYY-MM')
+            let month = '';
+            let year = '';
+            console.log('Selected,, month/year:', month, year);
+            if (selectedMonth && selectedMonth.includes('-')) {
+                [year, month] = selectedMonth.split('-');
+                console.log('Selected month/year:', month, year);
+            } else {
+                // fallback to current month/year if not set
+                const now = new Date();
+                year = now.getFullYear().toString();
+                month = String(now.getMonth() + 1).padStart(2, '0');
+            }
+                let url = `${API_BASE_URL}patient/dashboard/monthly-counts?month=${month}&year=${year}`;
+                console.log('Fetchingdashboard:', url);
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                console.log('Response status:', response.status);
+                const data = await response.json();
+                console.log('dashboard data:', data);
+                if (response.ok) {
+                    setDashboardData(data.data);
+                } else {
+                    setError(data.message || 'Failed to fetch dashboard data');
+                }
+            } catch (err) {
+                setError('Network erroaa');
+            }
+            setLoading(false);
+        };
+
+    const handlePackageTypeClick = (appointment) => {
+        if (appointment?.packageType === 'video call' && appointment?.zoomMeetingUrl) {
+            // Redirect to Zoom meeting URL
+            window.open(appointment.zoomMeetingUrl, '_blank');
+        } else {
+            // Navigate to patient detail page for in-person
+            navigate("/patient-detail", {
+                state: {
+                    patientId: appointment?.id,
+                    name: appointment?.patientName,
+                    email: appointment?.email,
+                    mobile: appointment?.mobileNumber,
+                    address: appointment?.address
+                }
+            });
+        }
     };
 
     function getPagination(current, total) {
@@ -291,112 +385,18 @@ const Doctordashboard = () => {
     }
     // Mock data
     const stats = [
-        { title: "Today's Patients", value: todayappointments.length, icon: <img src={Icon1} alt="icon" style={{ width: 28, height: 28 }} /> },
-        { title: 'Upcoming Appointments', value: upcomingAppointment.length, icon: <img src={Icon} alt="icon" style={{ width: 28, height: 28 }} /> },
-        { title: 'Total Consults', value: 150, icon: <img src={Icon3} alt="icon" style={{ width: 28, height: 28 }} /> }
+        {
+            title: "Today's Patients",
+            value: dashboardData ? dashboardData.today_patients : 0,
+            icon: <img src={Icon1} alt="icon" style={{ width: 28, height: 28 }} />
+        },
+        {
+            title: 'Upcoming Appointments',
+            value: dashboardData ? dashboardData.upcoming_appointments : 0,
+            icon: <img src={Icon} alt="icon" style={{ width: 28, height: 28 }} />
+        },
+        { title: 'Total Consults', value:dashboardData ? dashboardData.total_consults : 0, icon: <img src={Icon3} alt="icon" style={{ width: 28, height: 28 }} /> }
     ];
-    const dataline = [
-        {
-            date: '2000-01',
-            uv: 4000,
-            pv: 2400,
-            amt: 2400
-        },
-        {
-            date: '2000-02',
-            uv: 3000,
-            pv: 1398,
-            amt: 2210
-        },
-        {
-            date: '2000-03',
-            uv: 2000,
-            pv: 9800,
-            amt: 2290
-        },
-        {
-            date: '2000-04',
-            uv: 2780,
-            pv: 3908,
-            amt: 2000
-        },
-        {
-            date: '2000-05',
-            uv: 1890,
-            pv: 4800,
-            amt: 2181
-        },
-        {
-            date: '2000-06',
-            uv: 2390,
-            pv: 3800,
-            amt: 2500
-        },
-        {
-            date: '2000-07',
-            uv: 3490,
-            pv: 4300,
-            amt: 2100
-        },
-        {
-            date: '2000-08',
-            uv: 4000,
-            pv: 2400,
-            amt: 2400
-        },
-        {
-            date: '2000-09',
-            uv: 3000,
-            pv: 1398,
-            amt: 2210
-        },
-        {
-            date: '2000-10',
-            uv: 2000,
-            pv: 9800,
-            amt: 2290
-        },
-        {
-            date: '2000-11',
-            uv: 2780,
-            pv: 3908,
-            amt: 2000
-        },
-        {
-            date: '2000-12',
-            uv: 1890,
-            pv: 4800,
-            amt: 2181
-        }
-    ];
-
-    const monthTickFormatter = (tick) => {
-        const date = new Date(tick);
-
-        return date.getMonth() + 1;
-    };
-
-    const renderQuarterTick = (tickProps) => {
-        const { x, y, payload, width, visibleTicksCount } = tickProps;
-        const { value, offset } = payload;
-        const date = new Date(value);
-        const month = date.getMonth();
-        const quarterNo = Math.floor(month / 3) + 1;
-        const isMidMonth = month % 3 === 1;
-
-        if (month % 3 === 1) {
-            return <text x={x + width / visibleTicksCount / 2 - offset} y={y - 4} textAnchor="middle">{`Q${quarterNo}`}</text>;
-        }
-
-        const isLast = month === 11;
-
-        if (month % 3 === 0 || isLast) {
-            const pathX = Math.floor(isLast ? x - offset + width / visibleTicksCount : x - offset) + 0.5;
-
-            return <path d={`M${pathX},${y - 4}v${-35}`} stroke="red" />;
-        }
-        return null;
-    };
 
     useEffect(() => {
         getPatients();
@@ -404,9 +404,38 @@ const Doctordashboard = () => {
         getEmergencyAppointment();
         getTodayAppointment();
         getPatientsEachmonth();
+        getDashboardData();
+        // Set today's date as default
+        setSelectedDate(getTodayDate());
+        setSelectedMonth(new Date().toISOString().slice(0, 7)); // YYYY-MM
     }, []);
+
+    // // Update dashboard data when selectedMonth changes
+    // useEffect(() => {
+    //     if (selectedMonth) {
+    //         getDashboardData();
+    //     }
+    // }, [selectedMonth]);
+
+    // Update total appointments when month or year changes
+    // useEffect(() => {
+    //     if (selectedMonth) {
+    //         const [year, month] = selectedMonth.split('-');
+    //         setSelectedYear(year);
+    //         getTotalAppointment(month, year);
+    //         getDashboardData();
+    //     }
+    // }, [selectedMonth, filterType]);
+        console.log('dashboardData:', dashboardData);
+
+        useEffect(() => {
+            if (filterType === 'monthly' && selectedMonth) {
+                getDashboardData();
+            }
+        }, [selectedMonth, filterType]);
     console.log('!!!!!:', emergencyAppointment);
     console.log('upcoming...:', upcomingAppointment);
+    console.log('Filter Type///:', filterType, 'Selected Date:', selectedDate, 'Selected Month:', selectedMonth);
 
     return (
         <div className="dashboard-layout">
@@ -419,7 +448,7 @@ const Doctordashboard = () => {
                         <div className="appointment-info">
                             <p className="appointment-type">Current Appointment</p>
                             <h3 className="appointment-name">
-                                Suresh D. <span className="appointment-id">(DRM0515)</span>
+                                {upcomingAppointment[0]?.patientName} <span className="appointment-id"></span>
                             </h3>
                         </div>
 
@@ -427,7 +456,18 @@ const Doctordashboard = () => {
                             <span className="status">Ongoing</span>
                         </div>
 
-                        <div className="appointment-time">6:00 PM - 6:30 PM</div>
+                        <div className="appointment-time">
+                            {upcomingAppointment[0]?.slotDate ? (
+                                <>
+                                    <div>{formatDateDisplay(upcomingAppointment[0].slotDate)}</div>
+                                    <div style={{ fontSize: 13, color: '#f1f0f0' }}>
+                                        {formatTimeDisplay(upcomingAppointment[0]?.slotTime, upcomingAppointment[0].slotDate)}
+                                    </div>
+                                </>
+                            ) : (
+                                ''
+                            )}
+                        </div>
                     </div>
 
                     {/* Next Appointment */}
@@ -435,184 +475,205 @@ const Doctordashboard = () => {
                         <div className="appointment-info">
                             <p className="appointment-type">Next Appointment</p>
                             <h3 className="appointment-name">
-                                Aakash M. <span className="appointment-id">(DRM2515)</span>
+                                {upcomingAppointment[1]?.patientName} <span className="appointment-id"></span>
                             </h3>
                         </div>
-
                         <div className="appointment-status">
-                            <button className="action-btn">Accept</button>
-                            <button className="action-btn">Reschedule</button>
+                            <button className="action-btn" onClick={() => handlePackageTypeClick(upcomingAppointment[1])}>
+                                {upcomingAppointment[1]?.packageType}
+                            </button>
+                        </div>
+                        <div className="appointment-status">
+                            <button className="action-btn" onClick={() => getUpdateappointment(upcomingAppointment[1]?.Id, 'accept')}
+                                disabled={loading}>
+                                {loading ? 'Processing...' : 'Accept'}
+                            </button>
+                            <button className="action-btn" onClick={() => getUpdateappointment(upcomingAppointment[1]?.Id, 'reschedule')}
+                                disabled={loading}
+                            >
+                                {loading ? 'Processing...' : 'Reschedule'}
+                            </button>
                         </div>
 
-                        <div className="appointment-time">6:30 PM - 7:00 PM</div>
+                        <div className="appointment-time">
+                            {upcomingAppointment[1]?.slotDate ? (
+                                <>
+                                    <div>{formatDateDisplay(upcomingAppointment[1].slotDate)}</div>
+                                    <div style={{ fontSize: 13, color: '#f1f0f0' }}>
+                                        {formatTimeDisplay(upcomingAppointment[1]?.slotTime, upcomingAppointment[1].slotDate)}
+                                    </div>
+                                </>
+                            ) : (
+                                ''
+                            )}
+                        </div>
                     </div>
 
                     <div className="appointmentE-card">
                         <div className="appointment-info">
-                            <p className="appointment-type">Emergency Appointment</p>
+                            <p className="appointment-type">Emergency Appointment ({emergencyAppointment.length} in queue)</p>
                             <h3 className="appointment-name">
-                                {emergencyAppointment[0]?.patientName} <span className="appointment-id">(DRM2515)</span>
+                                {emergencyAppointment[0]?.patientName} <span className="appointment-id"></span>
                             </h3>
                         </div>
-
                         <div className="appointment-status">
-                            <button className="action-btn">Accept</button>
-                            <button className="action-btn">Reschedule</button>
+                            <button className="action-btn" onClick={() => handlePackageTypeClick(emergencyAppointment[0])}>
+                                {emergencyAppointment[0]?.packageType}
+                            </button>
+                        </div>
+                        <div className="appointment-status">
+                            <button className="action-btn" onClick={() => getUpdateappointment(upcomingAppointment[0]?.Id, 'accept')}
+                                disabled={loading}>
+                                {loading ? 'Processing...' : 'Accept'}
+                            </button>
+                            <button className="action-btn" onClick={() => getUpdateappointment(upcomingAppointment[0]?.Id, 'reschedule')}
+                                disabled={loading}
+                            >
+                                {loading ? 'Processing...' : 'Reschedule'}
+                            </button>
                         </div>
                         {/* <div className="appointment-time">{emergencyAppointment[0]?.createdAt}</div> */}
                         <div className="appointment-time">
-                            {emergencyAppointment[0]?.createdAt
-                                ? // time only // ? new Date(emergencyAppointment[0].createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                                  new Date(emergencyAppointment[0].createdAt).toLocaleString('en-GB', {
-                                      timeZone: 'UTC'
-                                  })
-                                : ''}
+                            {emergencyAppointment[0]?.slotDate ? (
+                                <>
+                                    <div>{formatDateDisplay(emergencyAppointment[0].slotDate)}</div>
+                                    <div style={{ fontSize: 13, color: '#f1f0f0' }}>
+                                        {formatTimeDisplay(emergencyAppointment[0]?.slotTime, emergencyAppointment[0].slotDate)}
+                                    </div>
+                                </>
+                            ) : (
+                                ''
+                            )}
                         </div>
                     </div>
                 </div>
                 {/* <h2 style={{textAlign:'start', padding:10}}>Overview Cards</h2> */}
+                {/* Filter Controls */}
+                <div style={{
+                    padding: '20px',
+                    background: '#fff',
+                    margin: '20px',
+                    borderRadius: '8px',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                    display: 'flex',
+                    gap: '16px',
+                    alignItems: 'center',
+                    flexWrap: 'wrap'
+                }}>
+                    {/* Filter Type Toggle */}
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                        {/* <button
+                            onClick={() => {
+                                setFilterType('daily');
+                                setSelectedDate(getTodayDate());
+                            }}
+                            style={{
+                                padding: '8px 16px',
+                                background: filterType === 'daily' ? '#0a66ff' : '#f0f0f0',
+                                color: filterType === 'daily' ? '#fff' : '#666',
+                                border: 'none',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                fontWeight: '500',
+                                fontSize: '14px',
+                                transition: 'all 0.3s'
+                            }}
+                        >
+                            Daily
+                        </button> */}
+                        <button
+                            onClick={() => {
+                                setFilterType('monthly');
+                                setSelectedMonth(new Date().toISOString().slice(0, 7));
+                            }}
+                            style={{
+                                padding: '8px 16px',
+                                background: filterType === 'monthly' ? '#0a66ff' : '#f0f0f0',
+                                color: filterType === 'monthly' ? '#fff' : '#666',
+                                border: 'none',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                fontWeight: '500',
+                                fontSize: '14px',
+                                transition: 'all 0.3s'
+                            }}
+                        >
+                            Monthly
+                        </button>
+                    </div>
+
+                    {/* Date Input (for Daily) */}
+                    {filterType === 'daily' && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <label style={{ fontSize: '14px', color: '#666', fontWeight: '500' }}>Select Date:</label>
+                            <input
+                                type="date"
+                                value={selectedDate}
+                                onChange={(e) => setSelectedDate(e.target.value)}
+                                style={{
+                                    padding: '8px 12px',
+                                    border: '1px solid #ddd',
+                                    borderRadius: '6px',
+                                    fontSize: '14px',
+                                    cursor: 'pointer'
+                                }}
+                            />
+                            <span style={{ fontSize: '14px', color: '#0a66ff', fontWeight: '600' }}>
+                                {formatDateDisplay(selectedDate)}
+                            </span>
+                        </div>
+                    )}
+
+                    {/* Month Input (for Monthly) */}
+                    {filterType === 'monthly' && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <label style={{ fontSize: '14px', color: '#666', fontWeight: '500' }}>Select Month:</label>
+                            <input
+                                type="month"
+                                value={selectedMonth}
+                                onChange={(e) => setSelectedMonth(e.target.value)}
+                                style={{
+                                    padding: '8px 12px',
+                                    border: '1px solid #ddd',
+                                    borderRadius: '6px',
+                                    fontSize: '14px',
+                                    cursor: 'pointer'
+                                }}
+                            />
+                            <span style={{ fontSize: '14px', color: '#0a66ff', fontWeight: '600' }}>
+                                {formatMonthDisplay(selectedMonth)}
+                            </span>
+                        </div>
+                    )}
+                </div>
+
+                {/* Stats Grid */}
                 <div className="stats-grid">
                     {stats.map((stat, index) => (
                         <div key={index} className="stat-card new-style">
                             <div className="stat-header">
                                 <div className="stat-icon-circle">{stat.icon}</div>
-                                <select className="stat-dropdown">
-                                    <option>Monthly</option>
-                                    <option>Weekly</option>
-                                    <option>Yearly</option>
-                                </select>
+                                <div style={{
+                                    display: 'flex',
+                                    gap: '8px',
+                                    alignItems: 'center'
+                                }}>
+                                    <span style={{ fontSize: '12px', color: '#666' }}>
+                                        {filterType === 'daily' ? formatDateDisplay(selectedDate) : formatMonthDisplay(selectedMonth)}
+                                    </span>
+                                </div>
                             </div>
                             <div className="stat-body">
                                 <p className="stat-title">{stat.title}</p>
                                 <h3 className="stat-value">{stat.value}</h3>
                             </div>
                             <div className="stat-footer">
-                                <span className="stat-trend">{/* Add your trend icon here, e.g. 📈 or an SVG */}</span>
+                                <span className="stat-trend">{/* Add your trend icon here */}</span>
                             </div>
                         </div>
                     ))}
                 </div>
-                <div className="chart-sections">
-                    <h2 style={{ textAlign: 'start', padding: 10 }}>Patient Visit</h2>
-                    <ResponsiveContainer width="150%" height={350}>
-                        <BarChart
-                            width={100}
-                            height={400}
-                            data={dataline}
-                            margin={{
-                                top: 5,
-                                right: 30,
-                                left: 20,
-                                bottom: 5
-                            }}
-                        >
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="date" tickFormatter={monthTickFormatter} />
-                            <XAxis
-                                dataKey="date"
-                                axisLine={false}
-                                tickLine={false}
-                                interval={0}
-                                tick={renderQuarterTick}
-                                height={1}
-                                scale="band"
-                                xAxisId="quarter"
-                            />
-                            <YAxis />
-                            <Tooltip />
-                            <Legend />
-                            <Bar dataKey="pv" fill="#8884d8" />
-                            <Bar dataKey="uv" fill="#82ca9d" />
-                        </BarChart>
-                    </ResponsiveContainer>
-                </div>
-                <div class="team-table-card">
-                    <div class="team-table-header">
-                        <span class="team-table-title">
-                            Patient Data
-                            <span class="team-table-chip">{patients.length} Patients</span>
-                        </span>
-                        <input
-                            type="text"
-                            placeholder="Search by Name or Mobile..."
-                            value={searchTerm}
-                            onChange={(e) => {
-                                setSearchTerm(e.target.value);
-                                setCurrentPage(1); // Reset to first page on search
-                            }}
-                            style={{
-                                padding: '6px 10px',
-                                border: '1px solid #ccc',
-                                borderRadius: '5px',
-                                marginLeft: 'auto'
-                            }}
-                        />
-                    </div>
-                    <table class="team-table">
-                        <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Gender</th>
-                                <th>Mobile Number</th>
-                                <th>Email address</th>
-                                <th>City</th>
-                                <th>Problems</th>
-                                <th>Hostory</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {currentRows.map((row, idx) => (
-                                <tr key={idx}>
-                                    <td>
-                                        <div className="table-avatar">
-                                            <span className="avatar" style={{ backgroundColor: `hsl(${Math.random() * 360}, 70%, 50%)` }}>
-                                                {row.patientName ? row.patientName[0] : ''}
-                                            </span>
-                                            <div>
-                                                <div>{row.patientName}</div>
-                                                {/* <div className="username">{row.username}</div> */}
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td>{row.gender}</td>
-                                    <td>{row.mobileNumber}</td>
-                                    <td>{row.email}</td>
-                                    <td>{row.city}</td>
-                                    <td>{row.problem}</td>
-                                    <td>{row.history}</td>
-                                    {/* <td>{row.address?.city || ''}</td>
-                  <td>{row.dob || '-'}</td>
-                  <td>{row.certificate || '-'}</td> */}
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                    <div className="pagination" style={{ marginTop: 50, justifyContent: 'center', display: 'flex', alignItems: 'center' }}>
-                        <button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1} className="pagination-btn">
-                            <FaArrowLeft style={{ verticalalign: 'middle' }} />
-                            Previous
-                        </button>
 
-                        {getPagination(currentPage, totalPages).map((page, index) => (
-                            <button
-                                key={index}
-                                onClick={() => typeof page === 'number' && handlePageChange(page)}
-                                className={`pagination-btn ${page === currentPage ? 'active' : ''}`}
-                                disabled={page === '...'}
-                            >
-                                {page}
-                            </button>
-                        ))}
-
-                        <button
-                            onClick={() => handlePageChange(currentPage + 1)}
-                            disabled={currentPage === totalPages}
-                            className="pagination-btn"
-                        >
-                            Next <FaArrowRight style={{ verticalalign: 'middle', bottom: '10px' }} />
-                        </button>
-                    </div>
-                </div>
             </div>
             <Profile />
         </div>
