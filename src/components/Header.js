@@ -12,7 +12,7 @@ const pathToTitle = {
     '/doctoradmission': 'Admission',
     '/settings': 'Settings',
     '/doctorreport': 'Report',
-    '/patientlist': 'Patientlist'
+    '/patientlist': 'Patients'
 };
 
 const Header = ({ onUserAvatarClick, onAvatarClick }) => {
