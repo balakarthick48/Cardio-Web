@@ -91,15 +91,43 @@
   border-collapse: collapse;
   background: #fff;
 }
-.prescription-table th, .prescription-table td {
-  border: 1px solid #ddd;
-  padding: 10px;
-  text-align: center;
-}
 .prescription-table th {
-  background: #f5f5f5;
+  border: 0px solid #ddd;
+  padding: 10px;
+  text-align: left;
+}
+.prescription-table td {
+  border: 0px solid #ddd;
+  padding: 10px;
+  text-align: left;
+}
+
+.prescription-table th {
+  background: #00000000;
   color: #333;
 }
 .prescription-table td:first-child {
   font-weight: bold;
+}
+
+.tdDiv {
+  border: 1px solid #ddd; 
+  border-bottom: 1px solid #0070f3; 
+  border-radius: 6px;
+  padding: 10px;
+  text-align: left;
+  min-height: 12px;
+}
+
+.tdDivPlain {
+  border: 1px solid #ddd; 
+  border-radius: 6px;
+  padding: 10px;
+  text-align: left;
+  min-height: 12px;
+}
+.micBtn {
+  height: 32px;
+  width: 32px;
+  margin-top: 6px;
 }
