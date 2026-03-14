@@ -14,6 +14,7 @@ import { useLocation } from 'react-router-dom';
 import addIcon from '../../assets/images/add-icon.png';
 import editIcon from '../../assets/images/edit-icon.png';
 import downloadIcon from '../../assets/images/download.png';
+import ConfirmationModal from '../../components/ConfirmationModal';
 
 const PatientTabListModel = [
     { index: 0, name: 'profile', displayTitle: 'Profile' },
@@ -23,6 +24,15 @@ const PatientTabListModel = [
     { index: 4, name: 'present', displayTitle: 'Present Symptoms' },
     { index: 5, name: 'meeting process', displayTitle: 'Meeting Process' },
     { index: 6, name: 'diagnostic', displayTitle: 'Diagnostic Investigation' }
+];
+const PatientDoseDropdownModel = [
+    { index: 0, value: 'after_food', displayTitle: 'After Food' },
+    { index: 1, value: 'before_food', displayTitle: 'Before Food' },
+];
+
+const PatientEatingTypeDropdownModel = [
+    { index: 0, value: 'normal', displayTitle: 'Normal' },
+    { index: 1, value: 'chewing', displayTitle: 'Chewing' },
 ];
 
 export default function PatientDetail() {
@@ -43,6 +53,9 @@ export default function PatientDetail() {
     const [languageOption, setLanguageOption] = useState('en'); // 'en' or 'ta'
     // New state for the modal
     const [isSpeechModalOpen, setIsSpeechModalOpen] = useState(false);
+    const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+    const [prescriptionToDelete, setPrescriptionToDelete] = useState(null); // store index
+
     const [activeSpeechField, setActiveSpeechField] = useState(null);
 
     const [familyHistory, setFamilyHistory] = useState([]);
@@ -214,6 +227,7 @@ export default function PatientDetail() {
     const diagnosticRef = useRef(null);
     const combinedRef = useRef(null);
     const headerRef = useRef(null);
+    const medicineNameInputRef = useRef(null);
 
     const formatFrequency = (freqObj) => {
         if (!freqObj || typeof freqObj !== 'object') return '-';
@@ -313,8 +327,10 @@ export default function PatientDetail() {
 
     const [newPrescription, setNewPrescription] = useState({
         medicineName: '',
-        quantity: '',
-        frequency: { F: '', A: '', E: '', N: '' }
+        quantity: 1,
+        frequency: { F: '', A: '', E: '', N: '' },
+        dosageTiming: 'after_food',
+        eatingType: 'normal'
     });
     const [editingIdx, setEditingIdx] = useState(null);
 
@@ -326,7 +342,9 @@ export default function PatientDetail() {
         newPrescription.frequency.F === prescriptions[editingIdx].frequency_F &&
         newPrescription.frequency.A === prescriptions[editingIdx].frequency_A &&
         newPrescription.frequency.E === prescriptions[editingIdx].frequency_E &&
-        newPrescription.frequency.N === prescriptions[editingIdx].frequency_N;
+        newPrescription.frequency.N === prescriptions[editingIdx].frequency_N &&
+        newPrescription.dosageTiming === prescriptions[editingIdx].dosageTiming &&
+        newPrescription.eatingType === prescriptions[editingIdx].eatType;
 
     const handlePrescriptionChange = (e, field, freqField) => {
         const value = e.target.value;
@@ -344,24 +362,78 @@ export default function PatientDetail() {
     };
 
     const handleEditPrescription = (idx) => {
+        const prescriptionToEdit = prescriptions[idx];
+        if (!prescriptionToEdit) return;
         setEditingIdx(idx);
         setNewPrescription({
-            medicineName: prescriptions[idx].medicine_name,
-            quantity: prescriptions[idx].quantity,
+            medicineName: prescriptionToEdit.medicine_name,
+            quantity: prescriptionToEdit.quantity,
             frequency: {
-                F: prescriptions[idx].frequency_F,
-                A: prescriptions[idx].frequency_A,
-                E: prescriptions[idx].frequency_E,
-                N: prescriptions[idx].frequency_N
-            }
+                F: prescriptionToEdit.frequency_F,
+                A: prescriptionToEdit.frequency_A,
+                E: prescriptionToEdit.frequency_E,
+                N: prescriptionToEdit.frequency_N
+            },
+            dosageTiming: prescriptionToEdit.dosageTiming,
+            eatingType: prescriptionToEdit.eatType,
         });
+        setTimeout(() => {
+            medicineNameInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            medicineNameInputRef.current?.focus();
+        }, 0);
     };
+
+    const handleRemovePrescription = async (idx) => {
+        setPrescriptionToDelete(idx);
+        setIsConfirmModalOpen(true);
+    };
+
+    const confirmRemovePrescription = async () => {
+        if (prescriptionToDelete === null) return;
+
+        const prescriptionToRemove = prescriptions[prescriptionToDelete];
+        if (!prescriptionToRemove) {
+            setIsConfirmModalOpen(false);
+            setPrescriptionToDelete(null);
+            return;
+        }
+
+        const body = {
+            patientId: patientId,
+            prescriptionId: prescriptionToRemove.prescription_id,
+        };
+        const bodyJSON = JSON.stringify(body);
+        try {
+            let url = `${API_BASE_URL}con/remove-prescription`;
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: bodyJSON,
+            });
+            const data = await response.json();
+            if (response.ok) {
+                toast.success(data.message);
+                getPrescriptions();
+            } else {
+                toast.error(data.message);
+            }
+        } catch (err) {
+            toast.error('Network error');
+        } finally {
+            // Close modal and reset state
+            setIsConfirmModalOpen(false);
+            setPrescriptionToDelete(null);
+        }
+    };
+
     const handleCancelEditPrescription = () => {
         setEditingIdx(null);
         setNewPrescription({
             medicineName: '',
             quantity: '',
-            frequency: { F: '', A: '', E: '', N: '' }
+            frequency: { F: '', A: '', E: '', N: '' },
+            dosageTiming: 'after_food',
+            eatingType: 'normal'
         });
     };
 
@@ -498,7 +570,9 @@ export default function PatientDetail() {
                             A: newPrescription.frequency.A,
                             E: newPrescription.frequency.E,
                             N: newPrescription.frequency.N
-                        }
+                        },
+                        dosageTiming: newPrescription.dosageTiming,
+                        eatType: newPrescription.eatingType
                     }
                 ]
             };
@@ -517,7 +591,9 @@ export default function PatientDetail() {
                 setNewPrescription({
                     medicineName: '',
                     quantity: '',
-                    frequency: { F: '', A: '', E: '', N: '' }
+                    frequency: { F: '', A: '', E: '', N: '' },
+                    dosageTiming: 'after_food',
+                    eatingType: 'normal'
                 });
             } else {
                 setError(data.message || 'Failed');
@@ -2179,6 +2255,8 @@ export default function PatientDetail() {
                             <th>Afternoon</th>
                             <th>Evening</th>
                             <th>Night</th>
+                            <th>Dose Timing</th>
+                            <th>Eating Type</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -2192,20 +2270,36 @@ export default function PatientDetail() {
                                 <td><div className='tdDiv'>{med.frequency_A}</div></td>
                                 <td><div className='tdDiv'>{med.frequency_E}</div></td>
                                 <td><div className='tdDiv'>{med.frequency_N}</div></td>
+                                <td><div className='tdDiv'>{med.dosageTiming}</div></td>
+                                <td><div className='tdDiv'>{med.eatType}</div></td>
                                 <td style={styles.tableCellAction}>
                                     <button
                                         onClick={() => handleEditPrescription(idx)}
                                         disabled={editingIdx !== null}
                                         style={
                                             {
-                                                ...styles.editIconButton,
+                                                ...styles.presEditButton,
                                                 cursor: editingIdx !== null ? 'not-allowed' : 'pointer',
-                                                opacity: editingIdx !== null ? 0.5 : 1
+                                                opacity: editingIdx !== null ? 0.5 : 1,
                                             }
                                         }
                                     >
-                                        <img src={editIcon} alt="Edit" style={{ width: 24, height: 24 }} />
+                                        Edit
                                     </button>
+                                    <button
+                                        onClick={() => handleRemovePrescription(idx)}
+                                        disabled={editingIdx !== null}
+                                        style={
+                                            {
+                                                ...styles.removeTableButton,
+                                                cursor: editingIdx !== null ? 'not-allowed' : 'pointer',
+                                                opacity: editingIdx !== null ? 0.5 : 1,
+                                            }
+                                        }
+                                    >
+                                        Remove
+                                    </button>
+
                                 </td>
                             </tr>
                         ))}
@@ -2214,6 +2308,7 @@ export default function PatientDetail() {
                             <td style={{ padding: '8px' }}>
                                 <div style={{ display: 'flex', gap: 6 }}>
                                     <input
+                                        ref={medicineNameInputRef}
                                         value={newPrescription.medicineName}
                                         // value={listening && activeField === 'medicineName' ? text : newPrescription.medicineName}
                                         onChange={(e) => handlePrescriptionChange(e, 'medicineName')}
@@ -2245,7 +2340,7 @@ export default function PatientDetail() {
                                         onChange={(e) => handlePrescriptionChange(e, 'frequency', 'F')}
                                         style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
                                     >
-                                        {Array.from({ length: 60 }, (_, i) => i + 1).map((num) => (
+                                        {Array.from({ length: newPrescription.quantity }, (_, i) => i + 1).map((num) => (
                                             <option key={num} value={num}>
                                                 {num}
                                             </option>
@@ -2261,7 +2356,7 @@ export default function PatientDetail() {
                                         onChange={(e) => handlePrescriptionChange(e, 'frequency', 'A')}
                                         style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
                                     >
-                                        {Array.from({ length: 60 }, (_, i) => i + 1).map((num) => (
+                                        {Array.from({ length: newPrescription.quantity }, (_, i) => i + 1).map((num) => (
                                             <option key={num} value={num}>
                                                 {num}
                                             </option>
@@ -2276,7 +2371,7 @@ export default function PatientDetail() {
                                         onChange={(e) => handlePrescriptionChange(e, 'frequency', 'E')}
                                         style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
                                     >
-                                        {Array.from({ length: 60 }, (_, i) => i + 1).map((num) => (
+                                        {Array.from({ length: newPrescription.quantity }, (_, i) => i + 1).map((num) => (
                                             <option key={num} value={num}>
                                                 {num}
                                             </option>
@@ -2291,7 +2386,7 @@ export default function PatientDetail() {
                                         onChange={(e) => handlePrescriptionChange(e, 'frequency', 'N')}
                                         style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
                                     >
-                                        {Array.from({ length: 60 }, (_, i) => i + 1).map((num) => (
+                                        {Array.from({ length: newPrescription.quantity }, (_, i) => i + 1).map((num) => (
                                             <option key={num} value={num}>
                                                 {num}
                                             </option>
@@ -2300,21 +2395,48 @@ export default function PatientDetail() {
 
                                 </div>
                             </td>
-                            <td style={{ padding: '8px', verticalAlign: 'middle' }}>
+                            <td style={{ padding: '8px' }}>
                                 <div style={{ display: 'flex', gap: 6 }}>
+                                    <select
+                                        value={newPrescription.dosageTiming}
+                                        onChange={(e) => handlePrescriptionChange(e, 'dosageTiming')}
+                                        style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
+                                    >
+                                        {PatientDoseDropdownModel.sort((a, b) => a.index - b.index).map((item) => (
+                                            <option key={item.value} value={item.value}>
+                                                {item.displayTitle}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </td>
+                            <td style={{ padding: '8px' }}>
+                                <div style={{ display: 'flex', gap: 6 }}>
+                                    <select
+                                        value={newPrescription.eatingType}
+                                        onChange={(e) => handlePrescriptionChange(e, 'eatingType')}
+                                        style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
+                                    >
+                                        {PatientEatingTypeDropdownModel.sort((a, b) => a.index - b.index).map((item) => (
+                                            <option key={item.value} value={item.value}>
+                                                {item.displayTitle}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </td>
+                            <td style={{ padding: '8px', verticalAlign: 'middle' }}>
+                                <div style={{ display: 'flex', gap: 8 }}>
                                     {editingIdx !== null && (
                                         <>
                                             <button
                                                 onClick={handleUpdatePrescription}
                                                 disabled={isPrescriptionUnchanged}
                                                 style={{
+                                                    ...styles.updatePrescriptionButton,
                                                     background: isPrescriptionUnchanged ? '#ccc' : '#0070f3',
-                                                    borderColor: isPrescriptionUnchanged ? '#ccc' : '#0070f3',
-                                                    border: '1px solid',
-                                                    borderRadius: 6,
-                                                    color: '#fff',
+                                                    border: `1px solid ${isPrescriptionUnchanged ? '#ccc' : '#0070f3'}`,
                                                     cursor: isPrescriptionUnchanged ? 'not-allowed' : 'pointer',
-                                                    padding: '8px 14px',
                                                 }}
                                             >
                                                 Update
@@ -3407,6 +3529,16 @@ export default function PatientDetail() {
                 onTranscript={handleTranscript}
                 fieldName={activeSpeechField}
             />
+            <ConfirmationModal
+                isOpen={isConfirmModalOpen}
+                onClose={() => {
+                    setIsConfirmModalOpen(false);
+                    setPrescriptionToDelete(null);
+                }}
+                onConfirm={confirmRemovePrescription}
+                title="Confirm Deletion"
+                message="Are you sure you want to remove this prescription?"
+            />
             <ToastContainer
                 position="top-right"
                 autoClose={3000}
@@ -3485,11 +3617,16 @@ const styles = {
         background: '#fff',
         color: '#0070f3',
         borderRadius: 6,
-        borderColor: '#0070f3',
         border: '1px solid #0070f3',
-        padding: '8px 14px',
+        padding: '8px 12px',
+        minWidth: '80px',
+        textAlign: 'center',
+        fontSize: 14,
+        fontWeight: 500,
+        cursor: 'pointer',
     },
     updateButtonLarge: { padding: '12px 32px', background: '#0a66ff', border: 'none', color: '#fff', borderRadius: 6, fontWeight: 600, fontSize: 14 },
+    presEditButton: { padding: '8px 12px', minWidth: '80px', textAlign: 'center', background: '#fff', border: '1px solid #0a66ff', color: '#0a66ff', borderRadius: 6, cursor: 'pointer', marginRight: 8, fontSize: 14, fontWeight: 500 },
     marginTop140: { marginTop: 140 },
     prescriptionTable: { width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed', minWidth: 900 },
     tableCellPadding: { padding: '8px' },
@@ -3499,7 +3636,7 @@ const styles = {
     tableSelect: { width: '100%', padding: '8px', boxSizing: 'border-box' },
     tableCellAction: { padding: '8px', verticalAlign: 'middle' },
     cancelEditButton: { background: '#fff', color: '#0070f3', borderRadius: 6, border: '1px solid #0070f3', padding: '8px 14px' },
-    addButton: { background: '#0070f3', color: '#fff', borderRadius: 6, padding: '8px 14px', border: 'none', cursor: 'pointer' },
+    addButton: { background: '#0070f3', color: '#fff', borderRadius: 6, padding: '8px 12px', minWidth: '80px', textAlign: 'center', border: '1px solid #0070f3', cursor: 'pointer', fontSize: 14, fontWeight: 500 },
     marginTop24: { marginTop: 24 },
     meetingProcessControls: { display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' },
     smallLabel: { display: 'block', fontSize: 13, marginBottom: 6 },
@@ -3568,7 +3705,6 @@ const styles = {
     symptomValue: { margin: 0, padding: '10px 0', color: '#666', lineHeight: 1.6 },
     centerContent: { alignContent: 'center', justifyContent: 'center' },
     noDataLabel: { textAlign: 'center', color: '#555', fontStyle: 'italic', width: '100%', display: 'block', marginTop: 20 },
-    noDataLabel: { textAlign: 'center', color: '#555', fontStyle: 'italic', width: '100%', display: 'block', marginTop: 20 }, // Corrected typo
     prescriptionTableWrapper: {
         maxHeight: '400px', // Set a max height for scrolling
         overflowY: 'auto', // Enable vertical scrolling
@@ -3578,9 +3714,15 @@ const styles = {
         background: '#fff',
     },
     stickyTableHeader: { position: 'sticky', top: 0, backgroundColor: '#f5f5f5', zIndex: 1, padding: '12px', textAlign: 'left', fontWeight: 600, color: '#333' },
-    tableCellPadding: { padding: '8px' },
-    tableCellAction: { padding: '8px', verticalAlign: 'middle' },
-    editIconButton: { border: 'none', background: 'transparent', cursor: 'pointer', color: '#1e73ff' },
     addPrescriptionButton: { background: '#0070f3', color: '#fff', borderRadius: 6, padding: '8px 14px', border: 'none', cursor: 'pointer' },
-    cancelEditButton: { background: '#fff', color: '#0070f3', borderRadius: 6, borderColor: '#0070f3', border: '1px solid', padding: '8px 14px' },
+    removeTableButton: { background: '#fff', color: '#f44336', borderRadius: 6, padding: '8px 12px', minWidth: '80px', textAlign: 'center', border: '1px solid #f44336', cursor: 'pointer', fontSize: 14, fontWeight: 500 },
+    updatePrescriptionButton: {
+        borderRadius: 6,
+        color: '#fff',
+        padding: '8px 12px',
+        minWidth: '80px',
+        textAlign: 'center',
+        fontSize: 14,
+        fontWeight: 500,
+    },
 };

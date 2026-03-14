@@ -7,6 +7,8 @@ class DateValues {
     this.currentYear = now.getFullYear();
     this.currentMonth = String(now.getMonth() + 1).padStart(2, '0');
 
+    this.onLoadDefaultYear = ""
+    this.onLoadDefaultMonth = ""
     // 3 years before up to current year (no future years)
     this.years = Array.from({ length: 4 }, (_, index) => this.currentYear - 3 + index);
 

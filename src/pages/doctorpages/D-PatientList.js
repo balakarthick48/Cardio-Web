@@ -136,7 +136,7 @@ const PatientList = () => {
     const [itemsPerPage, setItemsPerPage] = useState(10);
 
     // Month and Year filter states
-    const [selectedMonth, setSelectedMonth] = useState(DateValues.currentMonth);
+    const [selectedMonth, setSelectedMonth] = useState(DateValues.onLoadDefaultMonth);
     const [selectedYear, setSelectedYear] = useState(DateValues.currentYear.toString());
 
     // Pagination + Search logic
@@ -188,6 +188,7 @@ const PatientList = () => {
     const updateSegmentDataIfRequired = (segment) => {
         switch (segment) {
             case 'patientHistory':
+                console.log('Updating patient history data if required...');
                 getPatients();
                 break;
             case 'appointmentHistory':
@@ -221,10 +222,6 @@ const PatientList = () => {
 
     const getPatients = async () => {
         // Only fetch if both month and year are selected
-        if (!selectedMonth || !selectedYear) {
-            setPatients([]);
-            return;
-        }
 
         setLoading(true);
         setError('');
