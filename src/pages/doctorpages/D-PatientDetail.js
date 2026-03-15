@@ -4,15 +4,13 @@ import Sidebar from '../../components/Sidebar';
 import Header from '../../components/Header';
 import API_BASE_URL from '../../config';
 import Pad from '../../assets/images/pad.png';
-import { use } from 'react';
 import { ToastContainer, toast } from 'react-toastify';
 import ImageUploading from 'react-images-uploading';
 import html2canvas from 'html2canvas-pro';
 import jsPDF from 'jspdf';
 import SpeechToTextModal from '../../components/SpeechToTextModal';
 import { useLocation } from 'react-router-dom';
-import addIcon from '../../assets/images/add-icon.png';
-import editIcon from '../../assets/images/edit-icon.png';
+import { FREQUENCY_OPTIONS } from '../../configs/prescriptionConstants';
 import downloadIcon from '../../assets/images/download.png';
 import ConfirmationModal from '../../components/ConfirmationModal';
 
@@ -54,6 +52,8 @@ export default function PatientDetail() {
     // New state for the modal
     const [isSpeechModalOpen, setIsSpeechModalOpen] = useState(false);
     const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+    const [groupedPrescriptions, setGroupedPrescriptions] = useState({});
+    const [selectedPrescriptionDate, setSelectedPrescriptionDate] = useState(null);
     const [prescriptionToDelete, setPrescriptionToDelete] = useState(null); // store index
 
     const [activeSpeechField, setActiveSpeechField] = useState(null);
@@ -287,7 +287,7 @@ export default function PatientDetail() {
             const pdfWidth = pdf.internal.pageSize.getWidth();
             const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
             pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-            pdf.save(name+'_'+patientId+'_'+filename);
+            pdf.save(name + '_' + patientId + '_' + filename);
             // cleanup
             document.body.removeChild(wrapper);
         } catch (err) {
@@ -429,13 +429,12 @@ export default function PatientDetail() {
         setEditingIdx(null);
         setNewPrescription({
             medicineName: '',
-            quantity: '',
+            quantity: 1, // Reset to a default quantity like 1
             frequency: { F: '', A: '', E: '', N: '' },
             dosageTiming: 'after_food',
             eatingType: 'normal'
         });
     };
-
 
     const getPrescriptions = async (e) => {
         if (!loading) {
@@ -455,7 +454,24 @@ export default function PatientDetail() {
             const data = await response.json();
             console.log('prescriptionsrespon######:', data);
             if (response.ok && Array.isArray(data.existingMedicines)) {
-                setPrescriptions(data.existingMedicines);
+                const medicines = data.existingMedicines;
+                // setPrescriptions(medicines); // Keep the flat list for editing/adding
+                const grouped = medicines.reduce((acc, med) => {
+                    const date = med.created_at.split('T')[0]; // Extract YYYY-MM-DD
+                    if (!acc[date]) {
+                        acc[date] = [];
+                    }
+                    acc[date].push(med);
+                    return acc;
+                }, {});
+                setGroupedPrescriptions(grouped);
+                const dates = Object.keys(grouped).sort().reverse(); // Sort dates descending
+                if (dates.length > 0 && !selectedPrescriptionDate) { // Only set if no date is selected
+                    setSelectedPrescriptionDate(dates[0]);
+                    setPrescriptions(grouped[dates[0]]);
+                } else if (dates.length === 0) {
+                    setSelectedPrescriptionDate(null);
+                }
             } else {
                 setPrescriptions([]);
                 setError(data.message || 'Failed');
@@ -589,7 +605,7 @@ export default function PatientDetail() {
                 setEditingIdx(null);
                 setNewPrescription({
                     medicineName: '',
-                    quantity: '',
+                    quantity: 1, // Reset to a default quantity like 1
                     frequency: { F: '', A: '', E: '', N: '' },
                     dosageTiming: 'after_food',
                     eatingType: 'normal'
@@ -1521,7 +1537,7 @@ export default function PatientDetail() {
                 <h4 style={{ color: '#0a66ff', marginBottom: 12 }}>{title}</h4>
                 <div style={{ background: '#fff', padding: 12, borderRadius: 6 }}>
                     {meds.map((m, i) => {
-                        const medName = m.medicineName || m.medicine_name || m.name || m.medicine || 'Medicine';
+                        const medName = m.medicineName || m.medicine_name || m.name || m.medicine || 'N/A';
                         const qty = m.quantity || m.qty || m.count || '-';
                         const freq = m.frequency || { F: m.frequency_F, A: m.frequency_A, E: m.frequency_E, N: m.frequency_N } || {};
                         return (
@@ -1563,6 +1579,12 @@ export default function PatientDetail() {
 
                                     <span style={{ marginRight: 12 }}>
                                         N: <b>{formatFrequency(freq.N)}</b>
+                                    </span>
+                                    <span style={{ marginRight: 12 }}>
+                                        Dose Timing: <b>{m.dosageTiming || 'N/A'}</b>
+                                    </span>
+                                    <span style={{ marginRight: 12 }}>
+                                        Eating Type: <b>{m.eatType || 'N/A'}</b>
                                     </span>
                                 </div>
                             </div>
@@ -1681,6 +1703,13 @@ export default function PatientDetail() {
                 </div>
             </button>
         )
+    }
+
+    const onCLickSelectPrescriptionDate = (date) => {
+        const customPrescriptionByDate = groupedPrescriptions[date]
+        if (customPrescriptionByDate.length === 0 || customPrescriptionByDate === null || customPrescriptionByDate === undefined) return
+        setSelectedPrescriptionDate(date)
+        setPrescriptions(groupedPrescriptions[date]);
     }
 
     const renderProfileUI = () => {
@@ -2204,9 +2233,36 @@ export default function PatientDetail() {
         )
     }
 
+    const getTodayDate = () => {
+        const today = new Date();
+        return today.toISOString().split('T')[0];
+    };
+    const getPrescriptionDateTitle = (date) => {
+        console.log("Date ---- 1", date)
+        if (date === getTodayDate()) {
+            return 'Today'
+        } else {
+            return date
+        }
+    }
     const renderPrescriptionUI = () => {
         return (
             <div className="patient-section" ref={prescriptionRef} style={{ position: 'relative' }}>
+                <div style={{ ...styles.tabsContainer, height: 32, justifyContent: 'flex-start', gap: 12 }}>
+                    {Object.keys(groupedPrescriptions).sort((a, b) => new Date(b) - new Date(a)).map((date, idx) => (
+                        <div key={date} style={{ display: 'flex', alignItems: 'center' }}>
+                            <button
+                                style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 0 }}
+                                onClick={() => onCLickSelectPrescriptionDate(date)}
+                            >
+                                <h4 style={{
+                                    color: selectedPrescriptionDate === date ? '#000000' : '#8C8C8C',
+                                    fontSize: 16, fontWeight: selectedPrescriptionDate === date ? 'bold' : 'normal', textAlign: 'left', margin: 0
+                                }}>{getPrescriptionDateTitle(date)}</h4>
+                            </button>
+                        </div>
+                    ))}
+                </div>
                 {headerTable('Download Prescription as PDF', prescriptionRef, 'Prescription.pdf', 'Prescription')}
                 <table className="prescription-table">
                     <thead>
@@ -2302,7 +2358,7 @@ export default function PatientDetail() {
                                         onChange={(e) => handlePrescriptionChange(e, 'frequency', 'F')}
                                         style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
                                     >
-                                        {Array.from({ length: Number(newPrescription.quantity) + 1 }, (_, i) => i).map((num) => (
+                                        {FREQUENCY_OPTIONS.map((num) => (
                                             <option key={num} value={num}>
                                                 {num}
                                             </option>
@@ -2317,7 +2373,7 @@ export default function PatientDetail() {
                                         onChange={(e) => handlePrescriptionChange(e, 'frequency', 'A')}
                                         style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
                                     >
-                                        {Array.from({ length: Number(newPrescription.quantity) + 1 }, (_, i) => i).map((num) => (
+                                        {FREQUENCY_OPTIONS.map((num) => (
                                             <option key={num} value={num}>
                                                 {num}
                                             </option>
@@ -2332,7 +2388,7 @@ export default function PatientDetail() {
                                         onChange={(e) => handlePrescriptionChange(e, 'frequency', 'E')}
                                         style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
                                     >
-                                        {Array.from({ length: Number(newPrescription.quantity) + 1 }, (_, i) => i).map((num) => (
+                                        {FREQUENCY_OPTIONS.map((num) => (
                                             <option key={num} value={num}>
                                                 {num}
                                             </option>
@@ -2347,7 +2403,7 @@ export default function PatientDetail() {
                                         onChange={(e) => handlePrescriptionChange(e, 'frequency', 'N')}
                                         style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
                                     >
-                                        {Array.from({ length: Number(newPrescription.quantity) + 1 }, (_, i) => i).map((num) => (
+                                        {FREQUENCY_OPTIONS.map((num) => (
                                             <option key={num} value={num}>
                                                 {num}
                                             </option>

@@ -1,0 +1,1 @@
+export const FREQUENCY_OPTIONS = [0, 0.5, 1, 2, 3, 4];
