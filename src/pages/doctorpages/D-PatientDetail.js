@@ -287,8 +287,7 @@ export default function PatientDetail() {
             const pdfWidth = pdf.internal.pageSize.getWidth();
             const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
             pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-            pdf.save(filename);
-
+            pdf.save(name+'_'+patientId+'_'+filename);
             // cleanup
             document.body.removeChild(wrapper);
         } catch (err) {
@@ -982,8 +981,10 @@ export default function PatientDetail() {
             console.log('investigation Response status:', response.status);
             const data = await response.json();
             console.log('investiation response:', data);
-            if (response.ok && data.data) {
+            if (response.ok && Array.isArray(data.data) && data.data.length > 0) {
                 setInvestigationData(data.data);
+                // Safely access data.data[0] after checking its existence
+                const firstInvestigation = data.data[0];
                 setInvestigationFormData({
                     investigationType: data.data[0].investigationType || '',
                     description: data.data[0].description || '',
@@ -1583,7 +1584,7 @@ export default function PatientDetail() {
         getfamilyHistory();
         getMeetingProcess();
         getVitalSignsData();
-        insertSymptoms();
+        // insertSymptoms(); // This function is for updating/inserting, not for initial data fetch
         getInvestigationData();
     }, []);
 
@@ -1652,27 +1653,33 @@ export default function PatientDetail() {
 
     // console.log('prescriptions///', prescriptions);
 
-    const downloadUI = (title, ref, filename) => {
+    const headerTable = (title, ref, filename, headerTitle) => {
         return (
             <div style={{ flexDirection: 'row', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h3>Prescription</h3>
-                <button
-                    className="pdf-btn"
-                    title={title}
-                    // onClick={() => exportSectionToPDF(prescriptionRef, 'Prescription.pdf')}
-                    onClick={() => exportHeaderAndSection(ref, filename)}
-                    style={{
-                        ...styles.pdfBtn
-                    }}
-                >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, height: 24 }}>
-                        <div>
-                            <label>Download</label>
-                        </div>
-                        <img src={downloadIcon} alt="Download" style={{ width: 16, height: 16 }} />
-                    </div>
-                </button>
+                <h3>{headerTitle}</h3>
+                {downloadButtonUI(title, ref, filename)}
             </div>
+        )
+    }
+
+    const downloadButtonUI = (title, ref, filename) => {
+        return (
+            <button
+                className="pdf-btn"
+                title={title}
+                // onClick={() => exportSectionToPDF(prescriptionRef, 'Prescription.pdf')}
+                onClick={() => exportHeaderAndSection(ref, filename)}
+                style={{
+                    ...styles.pdfBtn
+                }}
+            >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, height: 24 }}>
+                    <div>
+                        <label>Download</label>
+                    </div>
+                    <img src={downloadIcon} alt="Download" style={{ width: 16, height: 16 }} />
+                </div>
+            </button>
         )
     }
 
@@ -1686,16 +1693,7 @@ export default function PatientDetail() {
                 <div
                     style={styles.profileCard}
                 >
-                    {/* PDF download button (hidden while generating PDF) */}
-                    <button
-                        className="pdf-btn"
-                        title="Download profile as PDF"
-                        // onClick={() => exportSectionToPDF(combinedRef, 'Profile.pdf')}
-                        onClick={() => exportHeaderAndSection(profileRef, 'Profile.pdf')}
-                        style={styles.pdfBtn}
-                    >
-                        ⤓
-                    </button>
+                    {headerTable('Download profile as PDF', profileRef, 'Profile.pdf', 'Profile')}
                     <div style={styles.profileCardHeader}>
                         <div
                             style={styles.profileAvatarWrapper}
@@ -1760,21 +1758,8 @@ export default function PatientDetail() {
     const renderVitalUI = () => {
         return (
             <div>
+                {headerTable('Download vital signs as PDF', vitalRef, 'VitalSigns.pdf', '')}
                 <div className="patient-section grid-2" ref={vitalRef} style={styles.relative}>
-
-                    <button
-                        className="pdf-btn"
-                        title="Download vital as PDF"
-                        // onClick={() => exportSectionToPDF(vitalRef, 'vital.pdf')}
-                        onClick={() => exportHeaderAndSection(vitalRef, 'VitalSigns.pdf')}
-                        style={{
-                            position: 'absolute',
-                            border: 'none',
-                            ...styles.pdfBtn
-                        }}
-                    >
-                        ⤓
-                    </button>
                     <div className="card">
                         <h4>Vital Signs :</h4>
                         {/* <p>Temperature : __ °C <span className="edit">✎</span></p>
@@ -2034,31 +2019,10 @@ export default function PatientDetail() {
     const renderFamilyHistoryUI = () => {
         return (
             <div className="patient-section" ref={familyHistoryRef} style={styles.relative}>
-                {/* PDF Button */}
-                <button
-                    className="pdf-btn"
-                    title="Download Family Medical History as PDF"
-                    onClick={() => exportHeaderAndSection(familyHistoryRef, 'FamilyMedicalHistory.pdf')}
-                    style={{
-                        position: 'absolute',
-                        right: 12,
-                        top: 12,
-                        border: 'none',
-                        background: '#0a66ff',
-                        color: '#fff',
-                        padding: '6px 8px',
-                        borderRadius: 4,
-                        cursor: 'pointer',
-                        boxShadow: '0 2px 6px rgba(10,102,255,0.15)'
-                    }}
-                >
-                    ⤓
-                </button>
-
+                {headerTable('Download Family Medical History as PDF', familyHistoryRef, 'FamilyMedicalHistory.pdf', 'Family Medical History')}
                 {!isEditingFamilyHistory ? (
                     <>
                         {/* Display Mode - Table View */}
-                        <h3 style={styles.sectionTitle}>Family Medical History</h3>
                         <table
                             style={styles.historyTable}
                         >
@@ -2105,8 +2069,6 @@ export default function PatientDetail() {
                 ) : (
                     <>
                         {/* Edit Mode - Form View */}
-                        <h3 style={styles.sectionTitle}>Family Medical History</h3>
-
                         <div
                             style={styles.formGrid3}
                         >
@@ -2241,16 +2203,17 @@ export default function PatientDetail() {
             </div>
         )
     }
+
     const renderPrescriptionUI = () => {
         return (
             <div className="patient-section" ref={prescriptionRef} style={{ position: 'relative' }}>
-                {downloadUI('Download Prescription as PDF', prescriptionRef, 'Prescription.pdf')}
+                {headerTable('Download Prescription as PDF', prescriptionRef, 'Prescription.pdf', 'Prescription')}
                 <table className="prescription-table">
                     <thead>
                         <tr>
                             <th>No.</th>
                             <th>Medicine Name</th>
-                            <th>Quantity</th>
+                            <th style={styles.tableCellViewSmall}>Quantity</th>
                             <th>Forenoon</th>
                             <th>Afternoon</th>
                             <th>Evening</th>
@@ -2262,16 +2225,15 @@ export default function PatientDetail() {
                     <tbody>
                         {prescriptions.length !== 0 && prescriptions.map((med, idx) => (
                             <tr key={med.id || idx}>
-                                <td><div className='tdDiv'>{idx + 1 < 10 ? `0${idx + 1}.` : `${idx + 1}.`}</div></td>
-                                {/* <td>{idx + 1 < 10 ? `0${idx + 1}.` : `${idx + 1}.`}</td> */}
-                                <td> <div className='tdDiv'>{med.medicine_name}</div></td>
-                                <td><div className='tdDiv'>{med.quantity}</div></td>
-                                <td><div className='tdDiv'>{med.frequency_F}</div></td>
-                                <td><div className='tdDiv'>{med.frequency_A}</div></td>
-                                <td><div className='tdDiv'>{med.frequency_E}</div></td>
-                                <td><div className='tdDiv'>{med.frequency_N}</div></td>
-                                <td><div className='tdDiv'>{med.dosageTiming}</div></td>
-                                <td><div className='tdDiv'>{med.eatType}</div></td>
+                                <td style={styles.tableCellViewSmall}> <div className='tdDivLeft'>{idx + 1 < 10 ? `0${idx + 1}.` : `${idx + 1}.`}</div></td>
+                                <td> <div className='tdDivLeft'>{med.medicine_name}</div></td>
+                                <td style={styles.tableCellViewSmall}><div className='tdDivMid'>{med.quantity}</div></td>
+                                <td style={styles.tableCellViewMid}><div className='tdDivMid'>{med.frequency_F}</div></td>
+                                <td style={styles.tableCellViewMid}><div className='tdDivMid'>{med.frequency_A}</div></td>
+                                <td style={styles.tableCellViewMid}><div className='tdDivMid'>{med.frequency_E}</div></td>
+                                <td style={styles.tableCellViewMid}><div className='tdDivMid'>{med.frequency_N}</div></td>
+                                <td style={styles.tableCellViewNormal}><div className='tdDivMid'>{med.dosageTiming}</div></td>
+                                <td style={styles.tableCellViewNormal}><div className='tdDivMid'>{med.eatType}</div></td>
                                 <td style={styles.tableCellAction}>
                                     <button
                                         onClick={() => handleEditPrescription(idx)}
@@ -2340,7 +2302,7 @@ export default function PatientDetail() {
                                         onChange={(e) => handlePrescriptionChange(e, 'frequency', 'F')}
                                         style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
                                     >
-                                        {Array.from({ length: newPrescription.quantity }, (_, i) => i + 1).map((num) => (
+                                        {Array.from({ length: Number(newPrescription.quantity) + 1 }, (_, i) => i).map((num) => (
                                             <option key={num} value={num}>
                                                 {num}
                                             </option>
@@ -2348,7 +2310,6 @@ export default function PatientDetail() {
                                     </select>
                                 </div>
                             </td>
-
                             <td style={{ padding: '8px' }}>
                                 <div style={{ display: 'flex', gap: 6 }}>
                                     <select
@@ -2356,7 +2317,7 @@ export default function PatientDetail() {
                                         onChange={(e) => handlePrescriptionChange(e, 'frequency', 'A')}
                                         style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
                                     >
-                                        {Array.from({ length: newPrescription.quantity }, (_, i) => i + 1).map((num) => (
+                                        {Array.from({ length: Number(newPrescription.quantity) + 1 }, (_, i) => i).map((num) => (
                                             <option key={num} value={num}>
                                                 {num}
                                             </option>
@@ -2371,7 +2332,7 @@ export default function PatientDetail() {
                                         onChange={(e) => handlePrescriptionChange(e, 'frequency', 'E')}
                                         style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
                                     >
-                                        {Array.from({ length: newPrescription.quantity }, (_, i) => i + 1).map((num) => (
+                                        {Array.from({ length: Number(newPrescription.quantity) + 1 }, (_, i) => i).map((num) => (
                                             <option key={num} value={num}>
                                                 {num}
                                             </option>
@@ -2386,13 +2347,12 @@ export default function PatientDetail() {
                                         onChange={(e) => handlePrescriptionChange(e, 'frequency', 'N')}
                                         style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
                                     >
-                                        {Array.from({ length: newPrescription.quantity }, (_, i) => i + 1).map((num) => (
+                                        {Array.from({ length: Number(newPrescription.quantity) + 1 }, (_, i) => i).map((num) => (
                                             <option key={num} value={num}>
                                                 {num}
                                             </option>
                                         ))}
                                     </select>
-
                                 </div>
                             </td>
                             <td style={{ padding: '8px' }}>
@@ -2477,428 +2437,20 @@ export default function PatientDetail() {
         )
     }
 
-    const renderMeetingProcessUI = () => {
-        return (
-            <div className="patient-section" style={styles.marginTop24}>
-                <h3>Meeting Process</h3>
-                <div style={styles.meetingProcessControls}>
-                    <div>
-                        <label style={styles.smallLabel}>Meeting ID</label>
-                        <input
-                            type="text"
-                            value={meetingIdInput}
-                            onChange={(e) => setMeetingIdInput(e.target.value)}
-                            placeholder="Enter meeting ID"
-                            style={styles.smallInput}
-                        />
-                    </div>
-                    <div>
-                        <label style={styles.smallLabel}>Patient ID</label>
-                        <input
-                            type="text"
-                            value={patientIdInput}
-                            onChange={(e) => setPatientIdInput(e.target.value)}
-                            placeholder="Enter patient id"
-                            style={styles.smallInput}
-                        />
-                    </div>
-                    <div>
-                        <label style={styles.smallLabel}>Language</label>
-                        <select
-                            value={languageOption}
-                            onChange={(e) => setLanguageOption(e.target.value)}
-                            style={styles.smallSelect}
-                        >
-                            <option value="en">en</option>
-                            <option value="ta">ta</option>
-                        </select>
-                    </div>
-                    <div style={styles.meetingProcessActions}>
-                        <button
-                            onClick={getMeetingProcess}
-                            disabled={loading}
-                            style={{
-                                ...styles.processButton,
-                                background: loading ? '#ccc' : '#0a66ff',
-                                cursor: loading ? 'not-allowed' : 'pointer',
-                            }}
-                        >
-                            {loading ? 'Processing...' : 'Process'}
-                        </button>
-                        <button
-                            onClick={() => {
-                                setMeetingIdInput('');
-                                setPatientIdInput('');
-                                setLanguageOption('en');
-                                setError('');
-                            }}
-                            style={styles.resetButton}
-                        >
-                            Reset
-                        </button>
-                    </div>
-                </div>
-
-                {error && <div style={styles.errorText}>{error}</div>}
-                {meetingprocess && meetingprocess.data ? (
-                    <div style={styles.marginTop24}>
-                        {/* Remedies Section */}
-                        <div style={styles.marginBottom24}>
-                            <h4 style={styles.subSectionTitle}>Remedies</h4>
-                            {Array.isArray(meetingprocess.data.remedies) && meetingprocess.data.remedies.length > 0 ? (
-                                <ul style={styles.list}>
-                                    {meetingprocess.data.remedies.map((remedy, idx) => (
-                                        <li key={idx} style={styles.listItem}>
-                                            <b>Medicine:</b> {remedy.medicine} <br />
-                                            <b>Dosage:</b> {remedy.dosage} <br />
-                                            <b>Purpose:</b> {remedy.purpose}
-                                        </li>
-                                    ))}
-                                </ul>
-                            ) : (
-                                <div style={styles.noDataText}>No remedies found</div>
-                            )}
-                        </div>
-
-                        {/* Tests Section */}
-                        <div style={styles.marginBottom24}>
-                            <h4 style={styles.subSectionTitle}>Tests</h4>
-                            {Array.isArray(meetingprocess.data.tests) && meetingprocess.data.tests.length > 0 ? (
-                                <ul style={styles.list}>
-                                    {meetingprocess.data.tests.map((test, idx) => (
-                                        <li key={idx}>{test}</li>
-                                    ))}
-                                </ul>
-                            ) : (
-                                <div style={{ color: '#888' }}>No tests found</div>
-                            )}
-                        </div>
-
-                        {/* Follow Ups Section */}
-                        <div style={styles.marginBottom24}>
-                            <h4 style={styles.subSectionTitle}>Follow Ups</h4>
-                            {Array.isArray(meetingprocess.data.follow_ups) && meetingprocess.data.follow_ups.length > 0 ? (
-                                <ul style={styles.list}>
-                                    {meetingprocess.data.follow_ups.map((follow, idx) => (
-                                        <li key={idx}>{follow}</li>
-                                    ))}
-                                </ul>
-                            ) : (
-                                <div style={{ color: '#888' }}>No follow ups found</div>
-                            )}
-                        </div>
-
-                        {/* Other Section */}
-                        <div style={styles.marginBottom24}>
-                            <h4 style={styles.subSectionTitle}>Other</h4>
-                            {Array.isArray(meetingprocess.data.other) && meetingprocess.data.other.length > 0 ? (
-                                <ul style={styles.list}>
-                                    {meetingprocess.data.other.map((other, idx) => (
-                                        <li key={idx}>{other}</li>
-                                    ))}
-                                </ul>
-                            ) : (
-                                <div style={{ color: '#888' }}>No other notes found</div>
-                            )}
-                        </div>
-
-                        {/* Prescription Section */}
-                        <div style={styles.marginBottom24}>
-                            <h4 style={styles.subSectionTitle}>Prescription</h4>
-                            {meetingprocess.data.prescription && Array.isArray(meetingprocess.data.prescription.prescription) && meetingprocess.data.prescription.prescription.length > 0 ? (
-                                <table style={styles.summaryTable}>
-                                    <thead>
-                                        <tr style={styles.summaryTableHeader}>
-                                            <th style={styles.summaryTableTh}>Medicine Name</th>
-                                            <th style={styles.summaryTableTh}>Quantity</th>
-                                            <th style={styles.summaryTableTh}>Frequency</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {meetingprocess.data.prescription.prescription.map((item, idx) => (
-                                            <tr key={idx}>
-                                                <td style={styles.summaryTableTd}>{item.medicineName}</td>
-                                                <td style={styles.summaryTableTd}>{item.quantity}</td>
-                                                <td style={styles.summaryTableTd}>
-                                                    {item.frequency && typeof item.frequency === 'object' ? (
-                                                        <div>
-                                                            {Object.entries(item.frequency).map(([freqKey, freqVal]) => (
-                                                                <div key={freqKey} style={styles.marginBottom4}>
-                                                                    <b>{freqKey}:</b> AF: {freqVal.AF}, BF: {freqVal.BF}
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    ) : 'N/A'}
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            ) : (
-                                <div style={styles.noDataText}>No prescription found</div>
-                            )}
-                        </div>
-                    </div>
-                ) : (
-                    <div style={styles.noDataFound}>
-                        No data found
-                    </div>
-                )}
-            </div>
-        )
-    }
-
-    const renderDiagnosticUI = () => {
-        return (
-            <div className="diagnostic-section" ref={diagnosticRef} style={styles.diagnosticSection}>
-                <button
-                    className="pdf-btn"
-                    title="Download Diagnostic as PDF"
-                    onClick={() => exportHeaderAndSection(diagnosticRef, 'Diagnostic.pdf')}
-                    style={{
-                        position: 'absolute',
-                        right: 12,
-                        top: 12,
-                        border: 'none',
-                        background: '#0a66ff',
-                        color: '#fff',
-                        padding: '6px 8px',
-                        borderRadius: 4,
-                        cursor: 'pointer',
-                        boxShadow: '0 2px 6px rgba(10,102,255,0.15)'
-                    }}
-                >
-                    ⤓
-                </button>
-                <h2 style={styles.diagnosticTitle}>Diagnostic Investigation</h2>
-
-                <div style={styles.searchContainer}>
-                    <input
-                        type="search"
-                        placeholder="Search"
-                        style={styles.searchInput}
-                    />
-                </div>
-
-                <div style={styles.diagnosticContent}>
-                    <div style={styles.flex1}>
-                        {/* Investigation inputs on left side */}
-                        <div style={styles.investigationFormCard}>
-                            <h4 style={styles.marginTop0}>Add Investigation</h4>
-                            <div style={styles.formGrid1}>
-                                <div>
-                                    <label style={styles.smallLabel}>Investigation Type</label>
-                                    <input
-                                        value={investigationTypeInput}
-                                        onChange={(e) => setInvestigationTypeInput(e.target.value)}
-                                        placeholder="e.g. ECG"
-                                        style={styles.smallInput}
-                                    />
-                                </div>
-
-                                <div>
-                                    <label style={styles.smallLabel}>Description</label>
-                                    <textarea
-                                        value={investigationDescriptionInput}
-                                        onChange={(e) => setInvestigationDescriptionInput(e.target.value)}
-                                        placeholder="Short description..."
-                                        rows={3}
-                                        style={styles.textarea}
-                                    />
-                                </div>
-
-                                <div style={styles.formActions}>
-                                    <button
-                                        onClick={() => { setInvestigationTypeInput(''); setInvestigationDescriptionInput(''); setImages([]); }}
-                                        style={styles.resetButtonSmall}
-                                    >
-                                        Reset
-                                    </button>
-
-                                    <button
-                                        onClick={handleSubmitInvestigation}
-                                        style={styles.saveButtonSmall}
-                                    >
-                                        Save
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <h4 style={styles.marginTop0}>Imaging :</h4>
-                        <p style={styles.pMuted}>A patient's chief complaint is the primary reason</p>
-                    </div>
-
-                    <div style={styles.imageUploaderContainer}>
-                        <ImageUploading multiple value={images} onChange={onChange} maxNumber={maxNumber} dataURLKey="data_url">
-                            {({
-                                imageList,
-                                onImageUpload,
-                                onImageRemoveAll,
-                                onImageUpdate,
-                                onImageRemove,
-                                isDragging,
-                                dragProps
-                            }) => (
-                                <div style={styles.imageUploaderWrapper}>
-                                    {/* single image preview area (show latest image if any) */}
-                                    <div
-                                        style={styles.imagePreviewArea}
-                                        onClick={onImageUpload}
-                                        {...dragProps}
-                                    >
-                                        {imageList.length > 0 ? (
-                                            <img
-                                                src={imageList[imageList.length - 1].data_url}
-                                                alt="preview"
-                                                style={styles.imagePreview}
-                                            />
-                                        ) : (
-                                            <div style={styles.imageDropText}>Click or drop an image here</div>
-                                        )}
-                                    </div>
-
-                                    {/* thumbnails + actions */}
-                                    <div style={styles.thumbnailContainer}>
-                                        {imageList.map((image, index) => (
-                                            <div
-                                                key={index}
-                                                style={styles.thumbnail}
-                                            >
-                                                <img src={image.data_url} alt="" style={styles.thumbnailImg} />
-                                                <div style={styles.thumbnailActions}>
-                                                    <div style={styles.thumbnailDate}>{new Date().toLocaleDateString()}</div>
-                                                    <div style={styles.thumbnailButtons}>
-                                                        <button
-                                                            onClick={() => onImageUpdate(index)}
-                                                            title="Edit"
-                                                            style={styles.editIconButton}
-                                                        >
-                                                            ✎
-                                                        </button>
-                                                        <button
-                                                            onClick={() => onImageRemove(index)}
-                                                            title="Remove"
-                                                            style={styles.deleteIconButton}
-                                                        >
-                                                            🗑
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-
-                                    {/* control row */}
-                                    <div style={styles.imageUploaderControls}>
-                                        <button
-                                            onClick={onImageUpload}
-                                            style={{
-                                                ...styles.uploadButton,
-                                                background: isDragging ? '#e6f0ff' : '#fff',
-                                            }}
-                                        >
-                                            Upload
-                                        </button>
-
-                                        <button
-                                            onClick={onImageRemoveAll}
-                                            style={styles.removeAllButton}
-                                        >
-                                            Remove all
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-                        </ImageUploading>
-                    </div>
-                </div>
-                {/* show investigationData entries below imaging area */}
-                {Array.isArray(investigationData) && investigationData.length > 0 ? (
-                    <div style={styles.marginTop20}>
-                        <h3 style={styles.investigationListTitle}>Investigations</h3>
-                        <div style={styles.investigationList}>
-                            {investigationData.map((item, idx) => (
-                                <div
-                                    key={item.id || idx}
-                                    style={styles.investigationItem}
-                                >
-                                    <div style={styles.flex1}>
-                                        <div style={styles.investigationItemTitle}>
-                                            {item.investigationType || 'N/A'}
-                                        </div>
-                                        <div style={styles.investigationItemDescription}>{item.description || 'No description'}</div>
-                                        <div style={styles.investigationItemDate}>Date: {item.recordDate || item.record_date || 'N/A'}</div>
-                                    </div>
-
-                                    <div style={styles.investigationItemImageContainer}>
-                                        {item.report_file_url ? (
-                                            <a href={item.report_file_url} target="_blank" rel="noreferrer">
-                                                <img
-                                                    src={item.report_file_url}
-                                                    alt="report"
-                                                    style={styles.investigationItemImage}
-                                                />
-                                            </a>
-                                        ) : (
-                                            <div style={styles.noFileText}>No file</div>
-                                        )}
-
-                                        {/* <div style={{ marginTop: 8 }}>
-                                                    <button
-                                                        onClick={() => alert('Edit investigation: implement edit handler as needed')}
-                                                        style={styles.editInvestigationButton}
-                                                    >
-                                                        Edit
-                                                    </button>
-                                                </div> */}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                ) : (
-                    <div style={styles.noDataText}>No diagnostic investigations found</div>
-                )}
-            </div>
-        )
-    }
-
-/**
- * Renders the present symptoms UI section.
- * This section displays a date picker to select the date of the symptoms,
- * a button to download the present symptoms as a PDF,
- * and a table to display the symptoms data.
- * There are also two modes: view mode and edit mode.
- * In view mode, the symptoms data is displayed in a table.
- * In edit mode, the symptoms data is displayed in a form.
- * The form allows the user to edit the symptoms data and save the changes.
- */
+    /**
+     * Renders the present symptoms UI section.
+     * This section displays a date picker to select the date of the symptoms,
+     * a button to download the present symptoms as a PDF,
+     * and a table to display the symptoms data.
+     * There are also two modes: view mode and edit mode.
+     * In view mode, the symptoms data is displayed in a table.
+     * In edit mode, the symptoms data is displayed in a form.
+     * The form allows the user to edit the symptoms data and save the changes.
+     */
     const renderPresentUI = () => {
         return (
             <div className="patient-section" ref={presentRef} style={styles.relative}>
-                <button
-                    className="pdf-btn"
-                    title="Download Present Symptoms as PDF"
-                    onClick={() => exportHeaderAndSection(presentRef, 'PresentSymptoms.pdf')}
-                    style={{
-                        position: 'absolute',
-                        right: 12,
-                        top: 12,
-                        border: 'none',
-                        background: '#0a66ff',
-                        color: '#fff',
-                        padding: '6px 8px',
-                        borderRadius: 4,
-                        cursor: 'pointer',
-                        boxShadow: '0 2px 6px rgba(10,102,255,0.15)'
-                    }}
-                >
-                    ⤓
-                </button>
-
-                <h3 style={styles.sectionTitle}>Present Symptoms</h3>
-
+                {headerTable('Download Present Symptoms as PDF', presentRef, 'PresentSymptoms.pdf', 'Present Symptoms')}
                 {/* Date Picker */}
                 <div style={styles.datePickerContainer}>
                     <div style={styles.datePickerWrapper}>
@@ -3234,6 +2786,365 @@ export default function PatientDetail() {
                             </button>
                         </div>
                     </>
+                )}
+            </div>
+        )
+    }
+
+    const renderMeetingProcessUI = () => {
+        return (
+            <div className="patient-section" style={styles.marginTop24}>
+                <h3>Meeting Process</h3>
+                <div style={styles.meetingProcessControls}>
+                    <div>
+                        <label style={styles.smallLabel}>Meeting ID</label>
+                        <input
+                            type="text"
+                            value={meetingIdInput}
+                            onChange={(e) => setMeetingIdInput(e.target.value)}
+                            placeholder="Enter meeting ID"
+                            style={styles.smallInput}
+                        />
+                    </div>
+                    <div>
+                        <label style={styles.smallLabel}>Patient ID</label>
+                        <input
+                            type="text"
+                            value={patientIdInput}
+                            onChange={(e) => setPatientIdInput(e.target.value)}
+                            placeholder="Enter patient id"
+                            style={styles.smallInput}
+                        />
+                    </div>
+                    <div>
+                        <label style={styles.smallLabel}>Language</label>
+                        <select
+                            value={languageOption}
+                            onChange={(e) => setLanguageOption(e.target.value)}
+                            style={styles.smallSelect}
+                        >
+                            <option value="en">en</option>
+                            <option value="ta">ta</option>
+                        </select>
+                    </div>
+                    <div style={styles.meetingProcessActions}>
+                        <button
+                            onClick={getMeetingProcess}
+                            disabled={loading}
+                            style={{
+                                ...styles.processButton,
+                                background: loading ? '#ccc' : '#0a66ff',
+                                cursor: loading ? 'not-allowed' : 'pointer',
+                            }}
+                        >
+                            {loading ? 'Processing...' : 'Process'}
+                        </button>
+                        <button
+                            onClick={() => {
+                                setMeetingIdInput('');
+                                setPatientIdInput('');
+                                setLanguageOption('en');
+                                setError('');
+                            }}
+                            style={styles.resetButton}
+                        >
+                            Reset
+                        </button>
+                    </div>
+                </div>
+
+                {error && <div style={styles.errorText}>{error}</div>}
+                {meetingprocess && meetingprocess.data ? (
+                    <div style={styles.marginTop24}>
+                        {/* Remedies Section */}
+                        <div style={styles.marginBottom24}>
+                            <h4 style={styles.subSectionTitle}>Remedies</h4>
+                            {Array.isArray(meetingprocess.data.remedies) && meetingprocess.data.remedies.length > 0 ? (
+                                <ul style={styles.list}>
+                                    {meetingprocess.data.remedies.map((remedy, idx) => (
+                                        <li key={idx} style={styles.listItem}>
+                                            <b>Medicine:</b> {remedy.medicine} <br />
+                                            <b>Dosage:</b> {remedy.dosage} <br />
+                                            <b>Purpose:</b> {remedy.purpose}
+                                        </li>
+                                    ))}
+                                </ul>
+                            ) : (
+                                <div style={styles.noDataText}>No remedies found</div>
+                            )}
+                        </div>
+
+                        {/* Tests Section */}
+                        <div style={styles.marginBottom24}>
+                            <h4 style={styles.subSectionTitle}>Tests</h4>
+                            {Array.isArray(meetingprocess.data.tests) && meetingprocess.data.tests.length > 0 ? (
+                                <ul style={styles.list}>
+                                    {meetingprocess.data.tests.map((test, idx) => (
+                                        <li key={idx}>{test}</li>
+                                    ))}
+                                </ul>
+                            ) : (
+                                <div style={{ color: '#888' }}>No tests found</div>
+                            )}
+                        </div>
+
+                        {/* Follow Ups Section */}
+                        <div style={styles.marginBottom24}>
+                            <h4 style={styles.subSectionTitle}>Follow Ups</h4>
+                            {Array.isArray(meetingprocess.data.follow_ups) && meetingprocess.data.follow_ups.length > 0 ? (
+                                <ul style={styles.list}>
+                                    {meetingprocess.data.follow_ups.map((follow, idx) => (
+                                        <li key={idx}>{follow}</li>
+                                    ))}
+                                </ul>
+                            ) : (
+                                <div style={{ color: '#888' }}>No follow ups found</div>
+                            )}
+                        </div>
+
+                        {/* Other Section */}
+                        <div style={styles.marginBottom24}>
+                            <h4 style={styles.subSectionTitle}>Other</h4>
+                            {Array.isArray(meetingprocess.data.other) && meetingprocess.data.other.length > 0 ? (
+                                <ul style={styles.list}>
+                                    {meetingprocess.data.other.map((other, idx) => (
+                                        <li key={idx}>{other}</li>
+                                    ))}
+                                </ul>
+                            ) : (
+                                <div style={{ color: '#888' }}>No other notes found</div>
+                            )}
+                        </div>
+
+                        {/* Prescription Section */}
+                        <div style={styles.marginBottom24}>
+                            <h4 style={styles.subSectionTitle}>Prescription</h4>
+                            {meetingprocess.data.prescription && Array.isArray(meetingprocess.data.prescription.prescription) && meetingprocess.data.prescription.prescription.length > 0 ? (
+                                <table style={styles.summaryTable}>
+                                    <thead>
+                                        <tr style={styles.summaryTableHeader}>
+                                            <th style={styles.summaryTableTh}>Medicine Name</th>
+                                            <th style={styles.summaryTableTh}>Quantity</th>
+                                            <th style={styles.summaryTableTh}>Frequency</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {meetingprocess.data.prescription.prescription.map((item, idx) => (
+                                            <tr key={idx}>
+                                                <td style={styles.summaryTableTd}>{item.medicineName}</td>
+                                                <td style={styles.summaryTableTd}>{item.quantity}</td>
+                                                <td style={styles.summaryTableTd}>
+                                                    {item.frequency && typeof item.frequency === 'object' ? (
+                                                        <div>
+                                                            {Object.entries(item.frequency).map(([freqKey, freqVal]) => (
+                                                                <div key={freqKey} style={styles.marginBottom4}>
+                                                                    <b>{freqKey}:</b> AF: {freqVal.AF}, BF: {freqVal.BF}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    ) : 'N/A'}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            ) : (
+                                <div style={styles.noDataText}>No prescription found</div>
+                            )}
+                        </div>
+                    </div>
+                ) : (
+                    <div style={styles.noDataFound}>
+                        No data found
+                    </div>
+                )}
+            </div>
+        )
+    }
+
+    const renderDiagnosticUI = () => {
+        return (
+            <div className="diagnostic-section" ref={diagnosticRef} style={styles.diagnosticSection}>
+                {headerTable('Download Diagnostic as PDF', diagnosticRef, 'Diagnostic.pdf', 'Diagnostic Investigation')}
+                <div style={styles.searchContainer}>
+                    <input
+                        type="search"
+                        placeholder="Search"
+                        style={styles.searchInput}
+                    />
+                </div>
+                <div style={styles.diagnosticContent}>
+                    <div style={styles.flex1}>
+                        {/* Investigation inputs on left side */}
+                        <div style={styles.investigationFormCard}>
+                            <h4 style={styles.marginTop0}>Add Investigation</h4>
+                            <div style={styles.formGrid1}>
+                                <div>
+                                    <label style={styles.smallLabel}>Investigation Type</label>
+                                    <input
+                                        value={investigationTypeInput}
+                                        onChange={(e) => setInvestigationTypeInput(e.target.value)}
+                                        placeholder="e.g. ECG"
+                                        style={styles.smallInput}
+                                    />
+                                </div>
+                                <div>
+                                    <label style={styles.smallLabel}>Description</label>
+                                    <textarea
+                                        value={investigationDescriptionInput}
+                                        onChange={(e) => setInvestigationDescriptionInput(e.target.value)}
+                                        placeholder="Short description..."
+                                        rows={3}
+                                        style={styles.textarea}
+                                    />
+                                </div>
+                                <div style={styles.formActions}>
+                                    <button
+                                        onClick={() => { setInvestigationTypeInput(''); setInvestigationDescriptionInput(''); setImages([]); }}
+                                        style={styles.resetButtonSmall}
+                                    >
+                                        Reset
+                                    </button>
+                                    <button
+                                        onClick={handleSubmitInvestigation}
+                                        style={styles.saveButtonSmall}
+                                    >
+                                        Save
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <h4 style={styles.marginTop0}>Imaging :</h4>
+                        <p style={styles.pMuted}>A patient's chief complaint is the primary reason</p>
+                    </div>
+                    <div style={styles.imageUploaderContainer}>
+                        <ImageUploading multiple value={images} onChange={onChange} maxNumber={maxNumber} dataURLKey="data_url">
+                            {({
+                                imageList,
+                                onImageUpload,
+                                onImageRemoveAll,
+                                onImageUpdate,
+                                onImageRemove,
+                                isDragging,
+                                dragProps
+                            }) => (
+                                <div style={styles.imageUploaderWrapper}>
+                                    {/* single image preview area (show latest image if any) */}
+                                    <div
+                                        style={styles.imagePreviewArea}
+                                        onClick={onImageUpload}
+                                        {...dragProps}
+                                    >
+                                        {imageList.length > 0 ? (
+                                            <img
+                                                src={imageList[imageList.length - 1].data_url}
+                                                alt="preview"
+                                                style={styles.imagePreview}
+                                            />
+                                        ) : (
+                                            <div style={styles.imageDropText}>Click or drop an image here</div>
+                                        )}
+                                    </div>
+                                    {/* thumbnails + actions */}
+                                    <div style={styles.thumbnailContainer}>
+                                        {imageList.map((image, index) => (
+                                            <div
+                                                key={index}
+                                                style={styles.thumbnail}
+                                            >
+                                                <img src={image.data_url} alt="" style={styles.thumbnailImg} />
+                                                <div style={styles.thumbnailActions}>
+                                                    <div style={styles.thumbnailDate}>{new Date().toLocaleDateString()}</div>
+                                                    <div style={styles.thumbnailButtons}>
+                                                        <button
+                                                            onClick={() => onImageUpdate(index)}
+                                                            title="Edit"
+                                                            style={styles.editIconButton}
+                                                        >
+                                                            ✎
+                                                        </button>
+                                                        <button
+                                                            onClick={() => onImageRemove(index)}
+                                                            title="Remove"
+                                                            style={styles.deleteIconButton}
+                                                        >
+                                                            🗑
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    {/* control row */}
+                                    <div style={styles.imageUploaderControls}>
+                                        <button
+                                            onClick={onImageUpload}
+                                            style={{
+                                                ...styles.uploadButton,
+                                                background: isDragging ? '#e6f0ff' : '#fff',
+                                            }}
+                                        >
+                                            Upload
+                                        </button>
+
+                                        <button
+                                            onClick={onImageRemoveAll}
+                                            style={styles.removeAllButton}
+                                        >
+                                            Remove all
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </ImageUploading>
+                    </div>
+                </div>
+                {/* show investigationData entries below imaging area */}
+                {Array.isArray(investigationData) && investigationData.length > 0 ? (
+                    <div style={styles.marginTop20}>
+                        <h3 style={styles.investigationListTitle}>Investigations</h3>
+                        <div style={styles.investigationList}>
+                            {investigationData.map((item, idx) => (
+                                <div
+                                    key={item.id || idx}
+                                    style={styles.investigationItem}
+                                >
+                                    <div style={styles.flex1}>
+                                        <div style={styles.investigationItemTitle}>
+                                            {item.investigationType || 'N/A'}
+                                        </div>
+                                        <div style={styles.investigationItemDescription}>{item.description || 'No description'}</div>
+                                        <div style={styles.investigationItemDate}>Date: {item.recordDate || item.record_date || 'N/A'}</div>
+                                    </div>
+
+                                    <div style={styles.investigationItemImageContainer}>
+                                        {item.report_file_url ? (
+                                            <a href={item.report_file_url} target="_blank" rel="noreferrer">
+                                                <img
+                                                    src={item.report_file_url}
+                                                    alt="report"
+                                                    style={styles.investigationItemImage}
+                                                />
+                                            </a>
+                                        ) : (
+                                            <div style={styles.noFileText}>No file</div>
+                                        )}
+
+                                        {/* <div style={{ marginTop: 8 }}>
+                                                    <button
+                                                        onClick={() => alert('Edit investigation: implement edit handler as needed')}
+                                                        style={styles.editInvestigationButton}
+                                                    >
+                                                        Edit
+                                                    </button>
+                                                </div> */}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                ) : (
+                    <div style={styles.noDataText}>No diagnostic investigations found</div>
                 )}
             </div>
         )
@@ -3634,7 +3545,10 @@ const styles = {
     tableInput: { width: '100%', padding: '8px', boxSizing: 'border-box' },
     micButton: { height: 24, width: 24, marginTop: 12 },
     tableSelect: { width: '100%', padding: '8px', boxSizing: 'border-box' },
-    tableCellAction: { padding: '8px', verticalAlign: 'middle' },
+    tableCellAction: { padding: '8px', verticalAlign: 'middle', width: 200 },
+    tableCellViewSmall: { width: 44 },
+    tableCellViewMid: { width: 100 },
+    tableCellViewNormal: { width: 160 },
     cancelEditButton: { background: '#fff', color: '#0070f3', borderRadius: 6, border: '1px solid #0070f3', padding: '8px 14px' },
     addButton: { background: '#0070f3', color: '#fff', borderRadius: 6, padding: '8px 12px', minWidth: '80px', textAlign: 'center', border: '1px solid #0070f3', cursor: 'pointer', fontSize: 14, fontWeight: 500 },
     marginTop24: { marginTop: 24 },

@@ -119,6 +119,23 @@
   min-height: 12px;
 }
 
+.tdDivLeft {
+  border: 1px solid #ddd; 
+  border-bottom: 1px solid #0070f3; 
+  border-radius: 6px;
+  padding: 10px;
+  text-align: left;
+  min-height: 12px;
+}
+.tdDivMid {
+  border: 1px solid #ddd; 
+  border-bottom: 1px solid #0070f3; 
+  border-radius: 6px;
+  padding: 10px;
+  text-align: center;
+  min-height: 12px;
+}
+
 .tdDivPlain {
   border: 1px solid #ddd; 
   border-radius: 6px;
