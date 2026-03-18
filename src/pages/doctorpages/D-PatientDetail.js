@@ -13,6 +13,7 @@ import { useLocation } from 'react-router-dom';
 import { FREQUENCY_OPTIONS } from '../../configs/prescriptionConstants';
 import downloadIcon from '../../assets/images/download.png';
 import ConfirmationModal from '../../components/ConfirmationModal';
+import URLConfigEnum, { getApiUrl } from '../../configs/urlConfig';
 
 const PatientTabListModel = [
     { index: 0, name: 'profile', displayTitle: 'Profile' },
@@ -21,7 +22,9 @@ const PatientTabListModel = [
     { index: 3, name: 'prescription', displayTitle: 'Prescription' },
     { index: 4, name: 'present', displayTitle: 'Present Symptoms' },
     { index: 5, name: 'meeting process', displayTitle: 'Meeting Process' },
-    { index: 6, name: 'diagnostic', displayTitle: 'Diagnostic Investigation' }
+    { index: 6, name: 'diagnostic', displayTitle: 'Diagnostic Investigation' },
+    { index: 7, name: 'next meetup', displayTitle: 'Next Meetup' },
+    { index: 8, name: 'preview', displayTitle: 'Preview' },
 ];
 const PatientDoseDropdownModel = [
     { index: 0, value: 'after_food', displayTitle: 'After Food' },
@@ -59,7 +62,9 @@ export default function PatientDetail() {
     const [activeSpeechField, setActiveSpeechField] = useState(null);
 
     const [familyHistory, setFamilyHistory] = useState([]);
-    const [vitalSignsData, setVitalSignsData] = useState(false);
+    const [vitalSignsData, setVitalSignsData] = useState([]);
+    const [selectedVitalSign, setselectedVitalSign] = useState(null);
+
     const [addSymptomsData, setaddSymptomsData] = useState(false);
     const [addInvestigationData, setaddInvestigationData] = useState(false);
     const [insertvitalSigns, setInsertVitalSigns] = useState({
@@ -796,7 +801,7 @@ export default function PatientDetail() {
 
         setLoading(false);
     };
-    console.log("familyHistoryData||||:", familyHistoryData);
+    // console.log("familyHistoryData||||:", familyHistoryData);
 
     const getInsertVitalSigns = async () => {
         setLoading(true);
@@ -816,9 +821,8 @@ export default function PatientDetail() {
             };
 
             console.log("Payload####:", body);
-
-            const response = await fetch(
-                `${API_BASE_URL}patient/vitals-basic`,
+            const urlString = getApiUrl(URLConfigEnum.PATIENT_VITAL_SIGNS_UPDATE);
+            const response = await fetch(urlString,
                 {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -852,7 +856,8 @@ export default function PatientDetail() {
         setLoading(true);
         setError('');
         try {
-            let url = `${API_BASE_URL}patient/vitals-basic-get?patientId=${patientId}`;
+            const url = new URL(getApiUrl(URLConfigEnum.PATIENT_VITAL_SIGNS, patientId));
+            console.log('URLString patient', url);
             console.log('vitals url:', url);
             const response = await fetch(url, {
                 method: 'GET',
@@ -862,20 +867,83 @@ export default function PatientDetail() {
             const data = await response.json();
             console.log('vitals response:', data);
 
-            if (response.ok && data.data) {
+            if (response.ok && data.data && Array.isArray(data.data)) {
                 console.log('<<<<<<>>>>//', response);
-                setVitalSignsData(data.data);
+                const sortedVitals = data.data.sort((a, b) => new Date(b.dateOfRecord) - new Date(a.dateOfRecord));
+                setVitalSignsData(sortedVitals);
+                if (sortedVitals.length > 0) {
+                    const firstData = sortedVitals[0];
+                    setselectedVitalSign(firstData);
+                    if (getPrescriptionDateTitle(firstData.dateOfRecord) === 'Today') {
+                        setVitalSigns(prev => (
+                            {
+                                ...prev,
+                                temperature: firstData.temperature,
+                                heartRate: firstData.heartRate,
+                                bloodPressure: {
+                                    systolic: (firstData.bloodPressure || '/').split('/')[0],
+                                    diastolic: (firstData.bloodPressure || '/').split('/')[1]
+                                },
+                                respiratoryRate: firstData.respiratoryRate,
+                            }
+                        ))
+                        setBasicData(prev => (
+                            {
+                                ...prev,
+                                age: firstData.age || '',
+                                height: firstData.height || '',
+                                weight: firstData.weight || '',
+                                bmi: firstData.bmi || ''
+                            }
+                        ))
+                    } else {
+                        setupDefaultVitalForToday(sortedVitals)
+                    }
+                } else {
+                    setupDefaultVitalForToday([])
+                }
             } else {
-                setVitalSignsData(null);
+                setVitalSignsData([]);
+                setselectedVitalSign(null);
             }
         } catch (err) {
             console.error('Error fetching vital signs:', err);
-            setVitalSignsData(null);
+            setVitalSignsData([]);
+            setselectedVitalSign(null);
             setError('Network error');
         }
         setLoading(false);
     };
 
+    const setupDefaultVitalForToday = (sortedVitals) => {
+        const todayVital = {
+            patientId: patientId,
+            dateOfRecord: getTodayDate(),
+            temperature: '',
+            heartRate: '',
+            bloodPressure: '/',
+            respiratoryRate: '',
+            age: '',
+            height: '',
+            weight: '',
+            bmi: '',
+        };
+        const newVitals = [todayVital, ...sortedVitals];
+        setVitalSignsData(newVitals);
+        setselectedVitalSign(newVitals[0]);
+        setVitalSigns({
+            temperature: '',
+            heartRate: '',
+            bloodPressure: { systolic: '', diastolic: '' },
+            respiratoryRate: ''
+        });
+        setBasicData({
+            age: '',
+            height: '',
+            weight: '',
+            bmi: ''
+        });
+    }
     // Get symptoms data from API
     const getSymptomsData = async (date) => {
         if (!date) {
@@ -933,7 +1001,7 @@ export default function PatientDetail() {
         }
         setLoading(false);
     };
-    console.log('symptomsData???...', symptomsData);
+    // console.log('symptomsData???...', symptomsData);
 
     const insertSymptoms = async (symptomsFormData) => {
         setLoading(true);
@@ -1029,7 +1097,7 @@ export default function PatientDetail() {
         }
         setLoading(false);
     };
-    console.log('investigationData???...', investigationData);
+    // console.log('investigationData???...', investigationData);
 
     const dataURLtoFile = (dataurl, filename) => {
         const arr = dataurl.split(',');
@@ -1595,20 +1663,29 @@ export default function PatientDetail() {
         );
     };
 
-    console.log('meetingprocess?<>><><', meetingprocess);
-    console.log('Symptoms((())):', meetingprocess?.summary?.symptoms);
-    console.log('<<<<<<>>>>', symptomsData);
-    console.log('familyHistory((())):', familyHistory);
+    // console.log('meetingprocess?<>><><', meetingprocess);
+    // console.log('Symptoms((())):', meetingprocess?.summary?.symptoms);
+    // console.log('<<<<<<>>>>', symptomsData);
+    // console.log('familyHistory((())):', familyHistory);
     // console.log('vitalSignsData+++++:', vitalSignsData[0]?.temperature);
     useEffect(() => {
+        // This effect fetches all the initial data for the patient.
+        // It runs only when the `patientId` changes.
+        if (!patientId) {
+            return; // Guard clause to prevent fetching data without a patientId.
+        }
+
         getPrescriptions();
         getPatients();
         getfamilyHistory();
-        getMeetingProcess();
         getVitalSignsData();
         // insertSymptoms(); // This function is for updating/inserting, not for initial data fetch
         getInvestigationData();
-    }, []);
+        // The dependency array intentionally omits the getter functions.
+        // This is because they are redefined on every render, and including them
+        // would cause an infinite loop. We only want to refetch when patientId changes.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [patientId]);
 
     // useEffect(() => {
     //   const SpeechRecognition =
@@ -1784,17 +1861,15 @@ export default function PatientDetail() {
         )
     }
 
-    const renderVitalUI = () => {
+    const vitalEditableUI = () => {
         return (
-            <div>
-                {headerTable('Download vital signs as PDF', vitalRef, 'VitalSigns.pdf', '')}
-                <div className="patient-section grid-2" ref={vitalRef} style={styles.relative}>
+            <>
+                <div style={styles.vitalsSummaryHeader}>
+                    {headerTable('Download vital signs as PDF', vitalRef, 'VitalSigns.pdf', '')}
+                </div>
+                <div className="patient-section grid-2" style={styles.relative}>
                     <div className="card">
                         <h4>Vital Signs :</h4>
-                        {/* <p>Temperature : __ °C <span className="edit">✎</span></p>
-          <p>Heart Rate : __ bpm <span className="edit">✎</span></p>
-          <p>Blood Pressure : __ / __ mmHg <span className="edit">✎</span></p>
-          <p>Respiratory Rate : __ per minute <span className="edit">✎</span></p> */}
                         <p>
                             Temperature :{' '}
                             {editing.section === 'vital' && editing.field === 'temperature' ? (
@@ -1966,32 +2041,69 @@ export default function PatientDetail() {
                         </p>
                         <button className="done-btn" onClick={getInsertVitalSigns}>Done</button>
                     </div>
-
                 </div>
-                <div style={styles.vitalsSummaryContainer}>
-                    <div style={styles.vitalsSummaryWrapper}>
-                        <div style={styles.vitalsSummaryCard}>
-                            <div style={styles.vitalsSummaryHeader}>
-                                <span style={styles.vitalsSummaryTitle}>Vital Signs :</span>
-                                <span style={styles.vitalsSummaryTitle}>Basic Data :</span>
-                            </div>
-                            <div style={styles.vitalsSummaryContent}>
-                                <div style={styles.flex1}>
-                                    <div style={styles.vitalItem}>Temperature : <span style={styles.vitalValue}>{vitalSignsData[0]?.temperature} ℃</span></div>
-                                    <div style={styles.vitalItem}>Heart Rate : <span style={styles.vitalValue}>{vitalSignsData[0]?.heartRate} bpm</span></div>
-                                    <div style={styles.vitalItem}>Blood Pressure : <span style={styles.vitalValue}>{vitalSignsData[0]?.bloodPressure} mmHg</span></div>
-                                    <div style={styles.vitalItem}>Respiratory Rate : <span style={styles.vitalValue}>{vitalSignsData[0]?.respiratoryRate} per minute</span></div>
-                                </div>
-                                <div style={styles.flex1}>
-                                    <div style={styles.vitalItem}>Age : <span style={styles.vitalValueBold}>{vitalSignsData[0]?.age} Years</span></div>
-                                    <div style={styles.vitalItem}>Height : <span style={styles.vitalValue}>{vitalSignsData[0]?.height} CM(s)</span></div>
-                                    <div style={styles.vitalItem}>Weight : <span style={styles.vitalValue}>{vitalSignsData[0]?.weight} KG</span></div>
-                                    <div style={styles.vitalItem}>BMI : <span style={styles.vitalValueBold}>{vitalSignsData[0]?.bmi}</span></div>
-                                </div>
-                            </div>
+            </>
+        )
+    }
+    const renderVitalUI = () => {
+        const selectedVitalData = vitalSignsData.find(vital => vital.dateOfRecord === selectedVitalSign.dateOfRecord);
+        console.log("selectedVitalData", selectedVitalData)
+        return (
+            <div>
+                <div style={{ ...styles.tabsContainer, height: 32, justifyContent: 'flex-start', gap: 12 }}>
+                    {vitalSignsData.map((vital, idx) => (
+                        <div key={vital.id || idx} style={{ display: 'flex', alignItems: 'center' }}>
+                            <button
+                                style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 0 }}
+                                onClick={() => setselectedVitalSign(vital)}
+                            >
+                                <h4 style={{
+                                    color: selectedVitalSign.dateOfRecord === vital.dateOfRecord ? '#000000' : '#8C8C8C',
+                                    fontSize: 16, fontWeight: selectedVitalSign.dateOfRecord === vital.dateOfRecord ? 'bold' : 'normal', textAlign: 'left', margin: 0
+                                }}>{getPrescriptionDateTitle(vital.dateOfRecord)}</h4>
+                            </button>
                         </div>
-                    </div>
+                    ))}
                 </div>
+                {vitalSignsData.length > 0 && (
+                    <>
+                        {getPrescriptionDateTitle(selectedVitalData.dateOfRecord) === 'Today' && (
+                            vitalEditableUI()
+                        )}
+                        {getPrescriptionDateTitle(selectedVitalData.dateOfRecord) !== 'Today' && (
+                            <div style={styles.vitalsSummaryContainer} ref={vitalRef}>
+                                <div style={styles.vitalsSummaryWrapper}>
+                                    <div style={styles.vitalsSummaryCard}>
+                                        <div style={styles.vitalsSummaryHeader}>
+                                            {headerTable('Download vital signs as PDF', vitalRef, 'VitalSigns.pdf', '')}
+                                        </div>
+                                        <div style={styles.vitalsSummaryContent}>
+                                            <div style={styles.flex1}>
+                                                <span style={styles.vitalsSummaryTitle}>Vital Signs :</span>
+                                                <div style={styles.vitalItem}>Temperature : <span style={styles.vitalValue}>{selectedVitalData?.temperature} ℃</span></div>
+                                                <div style={styles.vitalItem}>Heart Rate : <span style={styles.vitalValue}>{selectedVitalData?.heartRate} bpm</span></div>
+                                                <div style={styles.vitalItem}>Blood Pressure : <span style={styles.vitalValue}>{selectedVitalData?.bloodPressure} mmHg</span></div>
+                                                <div style={styles.vitalItem}>Respiratory Rate : <span style={styles.vitalValue}>{selectedVitalData?.respiratoryRate} per minute</span></div>
+                                            </div>
+                                            <div style={styles.flex1}>
+                                                <span style={styles.vitalsSummaryTitle}>Basic Data :</span>
+                                                <div style={styles.vitalItem}>Age : <span style={styles.vitalValueBold}>{selectedVitalData?.age} Years</span></div>
+                                                <div style={styles.vitalItem}>Height : <span style={styles.vitalValue}>{selectedVitalData?.height} CM(s)</span></div>
+                                                <div style={styles.vitalItem}>Weight : <span style={styles.vitalValue}>{selectedVitalData?.weight} KG</span></div>
+                                                <div style={styles.vitalItem}>BMI : <span style={styles.vitalValueBold}>{selectedVitalData?.bmi}</span></div>
+                                            </div>
+                                            <></>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </>
+                )}
+                {!selectedVitalSign && (
+                    vitalEditableUI()
+                )}
+
                 {/* Medical History */}
                 {/* <div className="patient-section">
                             <h3>Medical History</h3>
@@ -2235,16 +2347,44 @@ export default function PatientDetail() {
 
     const getTodayDate = () => {
         const today = new Date();
-        return today.toISOString().split('T')[0];
+
+        // format options to extract year, month, and day for Asia/Kolkata
+        const options = {
+            timeZone: 'Asia/Kolkata',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+        };
+
+        const formatter = new Intl.DateTimeFormat('en-CA', options); // 'en-CA' gives YYYY-MM-DD
+        return formatter.format(today);
     };
-    const getPrescriptionDateTitle = (date) => {
-        console.log("Date ---- 1", date)
-        if (date === getTodayDate()) {
-            return 'Today'
-        } else {
-            return date
+
+    const getYesterday = () => {
+        const today = new Date();
+        const yesterday = new Date(today);
+        yesterday.setDate(today.getDate() - 1);
+        const options = {
+            timeZone: 'Asia/Kolkata',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
         }
+
+        const formatter = new Intl.DateTimeFormat('en-CA', options);
+        return formatter.format(yesterday);
     }
+
+    const getPrescriptionDateTitle = (date) => {
+        if (date === getTodayDate()) {
+            return 'Today';
+        } else if (date === getYesterday()) {
+            return 'Yesterday';
+        } else {
+            return date;
+        }
+    };
+
     const renderPrescriptionUI = () => {
         return (
             <div className="patient-section" ref={prescriptionRef} style={{ position: 'relative' }}>
@@ -3549,12 +3689,12 @@ const styles = {
     inputSmall: { width: 60 },
     inputExtraSmall: { width: 40 },
     vitalsSummaryContainer: { display: 'flex', justifyContent: 'center', margin: '24px 0' },
-    vitalsSummaryWrapper: { display: 'flex', gap: 24, flexWrap: 'wrap', width: '100%', maxWidth: 1200 },
-    vitalsSummaryCard: { border: '1px solid #e0e0e0', borderRadius: 8, background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', padding: 24, minWidth: 320, flex: '1 1 320px', maxWidth: 400 },
-    vitalsSummaryHeader: { display: 'flex', justifyContent: 'space-between', marginBottom: 8 },
+    vitalsSummaryWrapper: { display: 'flex', gap: 24, flexWrap: 'wrap', width: '100%', maxWidth: 1600 },
+    vitalsSummaryCard: { border: '1px solid #e0e0e0', borderRadius: 8, background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', padding: '16px 24px 24px 24px', minWidth: 320, flex: '1 1 320px', maxWidth: 600 },
+    vitalsSummaryHeader: { justifyContent: 'space-between', marginBottom: 8 },
     vitalsSummaryTitle: { color: '#1976d2', fontWeight: 600, fontSize: 16 },
     vitalsSummaryContent: { display: 'flex', justifyContent: 'space-between', gap: 24 },
-    vitalItem: { marginBottom: 8, color: '#333' },
+    vitalItem: { marginBottom: 8, color: '#333', marginTop: 16 },
     vitalValue: { color: '#1976d2' },
     vitalValueBold: { color: '#1976d2', fontWeight: 600 },
     sectionTitle: { marginTop: 0, marginBottom: 20 },
