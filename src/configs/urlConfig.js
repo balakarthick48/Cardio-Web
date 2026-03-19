@@ -7,7 +7,7 @@ export const URLConfigEnum = Object.freeze({
   PATIENT_VITAL_SIGNS_UPDATE: 'PATIENT_VITAL_SIGNS_UPDATE',
 });
 
-export const CMS_API_URL = 'https://api-cms.elevartechnologies.com/api/';
+// export const CMS_API_URL = 'https://api-cms.elevartechnologies.com/api/';
 
 // Map enum keys to relative API paths
 const URL_PATHS = {
@@ -25,9 +25,9 @@ export const getApiUrl = (key, patientId = '') => {
   }
 
   if (key === URLConfigEnum.PATIENT_VITAL_SIGNS && patientId) {
-    return `${CMS_API_URL}${path}${patientId}`;
+    return `${API_BASE_URL}${path}${patientId}`;
   } else {
-    return `${CMS_API_URL}${path}`;
+    return `${API_BASE_URL}${path}`;
   }
 };
 

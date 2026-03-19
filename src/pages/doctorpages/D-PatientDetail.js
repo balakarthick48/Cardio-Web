@@ -13,6 +13,7 @@ import { useLocation } from 'react-router-dom';
 import { FREQUENCY_OPTIONS } from '../../configs/prescriptionConstants';
 import downloadIcon from '../../assets/images/download.png';
 import ConfirmationModal from '../../components/ConfirmationModal';
+import { PatientStyles } from '../../styles/D-PatientDetail.styles.js';
 import URLConfigEnum, { getApiUrl } from '../../configs/urlConfig';
 
 const PatientTabListModel = [
@@ -55,13 +56,17 @@ export default function PatientDetail() {
     // New state for the modal
     const [isSpeechModalOpen, setIsSpeechModalOpen] = useState(false);
     const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+    const [activeSpeechField, setActiveSpeechField] = useState(null);
+
+    const [familyHistory, setFamilyHistory] = useState([]);
+
     const [groupedPrescriptions, setGroupedPrescriptions] = useState({});
     const [selectedPrescriptionDate, setSelectedPrescriptionDate] = useState(null);
     const [prescriptionToDelete, setPrescriptionToDelete] = useState(null); // store index
 
-    const [activeSpeechField, setActiveSpeechField] = useState(null);
+    const [groupedInvestigations, setGroupedInvestigations] = useState({});
+    const [selectedInvestigationDate, setSelectedInvestigationDate] = useState(null);
 
-    const [familyHistory, setFamilyHistory] = useState([]);
     const [vitalSignsData, setVitalSignsData] = useState([]);
     const [selectedVitalSign, setselectedVitalSign] = useState(null);
 
@@ -117,14 +122,6 @@ export default function PatientDetail() {
     // Local inputs for new investigation entry
     const [investigationTypeInput, setInvestigationTypeInput] = useState('');
     const [investigationDescriptionInput, setInvestigationDescriptionInput] = useState('');
-
-    useEffect(() => {
-        // populate local inputs when form data is loaded from API
-        if (investigationFormData && investigationFormData[0]) {
-            setInvestigationTypeInput(investigationFormData[0].investigationType || '');
-            setInvestigationDescriptionInput(investigationFormData[0].description || '');
-        }
-    }, [investigationFormData]);
 
     const handleSubmitInvestigation = () => {
         const payload = {
@@ -469,14 +466,20 @@ export default function PatientDetail() {
                     acc[date].push(med);
                     return acc;
                 }, {});
-                setGroupedPrescriptions(grouped);
-                const dates = Object.keys(grouped).sort().reverse(); // Sort dates descending
-                if (dates.length > 0 && !selectedPrescriptionDate) { // Only set if no date is selected
-                    setSelectedPrescriptionDate(dates[0]);
-                    setPrescriptions(grouped[dates[0]]);
-                } else if (dates.length === 0) {
-                    setSelectedPrescriptionDate(null);
+                let dates = Object.keys(grouped).sort().reverse(); // Sort dates descending
+                const firstData = dates[0] ?? null
+                if (firstData && firstData !== getTodayDate()) {
+                    grouped[getTodayDate()] = [];
                 }
+                dates = Object.keys(grouped).sort().reverse()
+                setGroupedPrescriptions(grouped);
+                const dateToDisplay = selectedPrescriptionDate || (dates.length > 0 ? dates[0] : getTodayDate());
+
+                if (!selectedPrescriptionDate) {
+                    setSelectedPrescriptionDate(dateToDisplay);
+                }
+                // Always update the prescriptions for the selected date from the newly fetched data
+                setPrescriptions(grouped[dateToDisplay] || []);
             } else {
                 setPrescriptions([]);
                 setError(data.message || 'Failed');
@@ -606,6 +609,7 @@ export default function PatientDetail() {
             const data = await response.json();
             // Update prescriptions table with latest data from API
             if (response.ok) {
+                toast.success(data.message || 'Prescription updated successfully');
                 getPrescriptions();
                 setEditingIdx(null);
                 setNewPrescription({
@@ -1057,42 +1061,48 @@ export default function PatientDetail() {
         setError('');
         try {
             let url = `${API_BASE_URL}patient/investigation-get?patientId=${patientId}`;
-            console.log('investigation url:', url);
             const response = await fetch(url, {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' }
             });
-            console.log('investigation Response status:', response.status);
             const data = await response.json();
-            console.log('investiation response:', data);
-            if (response.ok && Array.isArray(data.data) && data.data.length > 0) {
-                setInvestigationData(data.data);
-                // Safely access data.data[0] after checking its existence
-                const firstInvestigation = data.data[0];
-                setInvestigationFormData({
-                    investigationType: data.data[0].investigationType || '',
-                    description: data.data[0].description || '',
-                    associatedSymptoms: data.data[0].associated_symptoms || '',
-                    report_file: data.data[0].report_file || '',
-                    recordDate: data.data[0].recordDate || '',
-                    report_file_url: data.data[0].report_file_url || ''
-                });
 
-                setIsEditingInvestigation(false);
+            if (response.ok && Array.isArray(data.data)) {
+                const investigations = data.data;
+                const grouped = investigations.reduce((acc, item) => {
+                    const date = (item.recordDate || item.record_date || '').split('T')[0];
+                    if (date) {
+                        if (!acc[date]) {
+                            acc[date] = [];
+                        }
+                        acc[date].push(item);
+                    }
+                    return acc;
+                }, {});
+
+                const today = getTodayDate();
+                if (!grouped[today]) {
+                    grouped[today] = [];
+                }
+
+                const dates = Object.keys(grouped).sort().reverse();
+                setGroupedInvestigations(grouped);
+
+                const dateToDisplay = selectedInvestigationDate || (dates.length > 0 ? dates[0] : today);
+
+                if (!selectedInvestigationDate) {
+                    setSelectedInvestigationDate(dateToDisplay);
+                }
+
+                setInvestigationData(grouped[dateToDisplay] || []);
             } else {
-                setInvestigationData(null);
-                setInvestigationFormData({
-                    investigationType: '',
-                    description: '',
-                    associatedSymptoms: '',
-                    report_file: '',
-                    recordDate: '',
-                    report_file_url: ''
-                });
+                const today = getTodayDate();
+                setGroupedInvestigations({ [today]: [] });
+                setSelectedInvestigationDate(today);
+                setInvestigationData([]);
             }
         } catch (err) {
             console.error('Error fetching symptoms:', err);
-            setSymptomsData(null);
             setError('Network error');
         }
         setLoading(false);
@@ -1769,7 +1779,7 @@ export default function PatientDetail() {
                 // onClick={() => exportSectionToPDF(prescriptionRef, 'Prescription.pdf')}
                 onClick={() => exportHeaderAndSection(ref, filename)}
                 style={{
-                    ...styles.pdfBtn
+                    ...PatientStyles.pdfBtn
                 }}
             >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4, height: 24 }}>
@@ -1781,70 +1791,107 @@ export default function PatientDetail() {
             </button>
         )
     }
+    const getTodayDate = () => {
+        const today = new Date();
+
+        // format options to extract year, month, and day for Asia/Kolkata
+        const options = {
+            timeZone: 'Asia/Kolkata',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+        };
+
+        const formatter = new Intl.DateTimeFormat('en-CA', options); // 'en-CA' gives YYYY-MM-DD
+        return formatter.format(today);
+    };
+    const getYesterday = () => {
+        const today = new Date();
+        const yesterday = new Date(today);
+        yesterday.setDate(today.getDate() - 1);
+        const options = {
+            timeZone: 'Asia/Kolkata',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+        }
+
+        const formatter = new Intl.DateTimeFormat('en-CA', options);
+        return formatter.format(yesterday);
+    }
+    const getPrescriptionDateTitle = (date) => {
+        if (date === getTodayDate()) {
+            return 'Today';
+        } else if (date === getYesterday()) {
+            return 'Yesterday';
+        } else {
+            return date;
+        }
+    };
 
     const onCLickSelectPrescriptionDate = (date) => {
         const customPrescriptionByDate = groupedPrescriptions[date]
-        if (customPrescriptionByDate.length === 0 || customPrescriptionByDate === null || customPrescriptionByDate === undefined) return
+        // if (customPrescriptionByDate.length === 0 || customPrescriptionByDate === null || customPrescriptionByDate === undefined) return
         setSelectedPrescriptionDate(date)
-        setPrescriptions(groupedPrescriptions[date]);
+        setPrescriptions(customPrescriptionByDate);
     }
 
     const renderProfileUI = () => {
         return (
             <div
                 className="patient-section"
-                style={styles.profileSectionContainer}
+                style={PatientStyles.profileSectionContainer}
                 ref={profileRef}
             >
                 <div
-                    style={styles.profileCard}
+                    style={PatientStyles.profileCard}
                 >
                     {headerTable('Download profile as PDF', profileRef, 'Profile.pdf', 'Profile')}
-                    <div style={styles.profileCardHeader}>
+                    <div style={PatientStyles.profileCardHeader}>
                         <div
-                            style={styles.profileAvatarWrapper}
+                            style={PatientStyles.profileAvatarWrapper}
                         >
                             <img
                                 src={patients[0]?.avatar || 'https://i.ibb.co/2cX0dQr/avatar.png'}
                                 alt="avatar"
-                                style={styles.profileAvatar}
+                                style={PatientStyles.profileAvatar}
                             />
                         </div>
 
-                        <div style={styles.flex1}>
+                        <div style={PatientStyles.flex1}>
                             <div
-                                style={styles.profileNameContainer}
+                                style={PatientStyles.profileNameContainer}
                             >
                                 <div>
-                                    <h2 style={styles.patientName}>
+                                    <h2 style={PatientStyles.patientName}>
                                         {name || 'Peter Thomas'}
                                     </h2>
-                                    <div style={styles.patientSubDetail}>
+                                    <div style={PatientStyles.patientSubDetail}>
                                         {patients[0]?.applyMode || 'Inperson'}
                                     </div>
-                                    <div style={styles.marginTop8}>
-                                        <a style={styles.patientCode}>
+                                    <div style={PatientStyles.marginTop8}>
+                                        <a style={PatientStyles.patientCode}>
                                             [{patients[0]?.patientCode || 'DRS25154'}]
                                         </a>
                                     </div>
                                 </div>
                                 {/* optional small logo on the right if needed */}
-                                <div style={styles.profileHeaderActions} />
+                                <div style={PatientStyles.profileHeaderActions} />
                             </div>
 
-                            <hr style={styles.divider} />
+                            <hr style={PatientStyles.divider} />
 
-                            <div style={styles.contactDetails}>
-                                <div style={styles.flex1}>
-                                    <div style={styles.contactItem}>
+                            <div style={PatientStyles.contactDetails}>
+                                <div style={PatientStyles.flex1}>
+                                    <div style={PatientStyles.contactItem}>
                                         Email ID : {email || 'xyz@gmail.com'}
                                     </div>
                                     {/* <div style={{ marginBottom: 8 }}>{patients[0]?.email || 'xyz@gmail.com'}</div> */}
-                                    <div style={styles.contactItem}>
+                                    <div style={PatientStyles.contactItem}>
                                         Contact Number : {mobile || '+91 98567 56421'}
                                     </div>
                                     {/* <div style={{ marginBottom: 8 }}>{patients[0]?.mobileNumber || '+91 98567 56421'}</div> */}
-                                    <div style={styles.contactItem}>Address : {address}</div>
+                                    <div style={PatientStyles.contactItem}>Address : {address}</div>
                                 </div>
 
                                 {/* <div style={{ flex: 1 }}>
@@ -1864,10 +1911,10 @@ export default function PatientDetail() {
     const vitalEditableUI = () => {
         return (
             <>
-                <div style={styles.vitalsSummaryHeader}>
+                <div style={PatientStyles.vitalsSummaryHeader}>
                     {headerTable('Download vital signs as PDF', vitalRef, 'VitalSigns.pdf', '')}
                 </div>
-                <div className="patient-section grid-2" style={styles.relative}>
+                <div className="patient-section grid-2" style={PatientStyles.relative}>
                     <div className="card">
                         <h4>Vital Signs :</h4>
                         <p>
@@ -1877,7 +1924,7 @@ export default function PatientDetail() {
                                     <input
                                         value={vitalSigns.temperature}
                                         onChange={e => setVitalSigns(prev => ({ ...prev, temperature: e.target.value }))}
-                                        style={styles.inputSmall}
+                                        style={PatientStyles.inputSmall}
                                     />{' '}
                                     <button onClick={handleSave}>Save</button>
                                 </>
@@ -1897,7 +1944,7 @@ export default function PatientDetail() {
                                     <input
                                         value={vitalSigns.heartRate}
                                         onChange={e => setVitalSigns(prev => ({ ...prev, heartRate: e.target.value }))}
-                                        style={styles.inputSmall}
+                                        style={PatientStyles.inputSmall}
                                     />{' '}
                                     <button onClick={handleSave}>Save</button>
                                 </>
@@ -1917,13 +1964,13 @@ export default function PatientDetail() {
                                     <input
                                         value={vitalSigns.bloodPressure.systolic}
                                         onChange={e => setVitalSigns(prev => ({ ...prev, bloodPressure: { ...prev.bloodPressure, systolic: e.target.value } }))}
-                                        style={styles.inputExtraSmall}
+                                        style={PatientStyles.inputExtraSmall}
                                     />
                                     /
                                     <input
                                         value={vitalSigns.bloodPressure.diastolic}
                                         onChange={e => setVitalSigns(prev => ({ ...prev, bloodPressure: { ...prev.bloodPressure, diastolic: e.target.value } }))}
-                                        style={styles.inputExtraSmall}
+                                        style={PatientStyles.inputExtraSmall}
                                     />{' '}
                                     mmHg <button onClick={handleSave}>Save</button>
                                 </>
@@ -1943,7 +1990,7 @@ export default function PatientDetail() {
                                     <input
                                         value={vitalSigns.respiratoryRate}
                                         onChange={e => setVitalSigns(prev => ({ ...prev, respiratoryRate: e.target.value }))}
-                                        style={styles.inputSmall}
+                                        style={PatientStyles.inputSmall}
                                     />{' '}
                                     <button onClick={handleSave}>Save</button>
                                 </>
@@ -1966,7 +2013,7 @@ export default function PatientDetail() {
                                     <input
                                         value={basicData.age}
                                         onChange={e => setBasicData(prev => ({ ...prev, age: e.target.value }))}
-                                        style={styles.inputSmall}
+                                        style={PatientStyles.inputSmall}
                                     />{' '}
                                     <button onClick={handleBasicSave}>Save</button>
                                 </>
@@ -1986,7 +2033,7 @@ export default function PatientDetail() {
                                     <input
                                         value={basicData.height}
                                         onChange={e => setBasicData(prev => ({ ...prev, height: e.target.value }))}
-                                        style={styles.inputSmall}
+                                        style={PatientStyles.inputSmall}
                                     />{' '}
                                     <button onClick={handleBasicSave}>Save</button>
                                 </>
@@ -2006,7 +2053,7 @@ export default function PatientDetail() {
                                     <input
                                         value={basicData.weight}
                                         onChange={e => setBasicData(prev => ({ ...prev, weight: e.target.value }))}
-                                        style={styles.inputSmall}
+                                        style={PatientStyles.inputSmall}
                                     />{' '}
                                     <button onClick={handleBasicSave}>Save</button>
                                 </>
@@ -2026,7 +2073,7 @@ export default function PatientDetail() {
                                     <input
                                         value={basicData.bmi}
                                         onChange={e => setBasicData(prev => ({ ...prev, bmi: e.target.value }))}
-                                        style={styles.inputSmall}
+                                        style={PatientStyles.inputSmall}
                                     />{' '}
                                     <button onClick={handleBasicSave}>Save</button>
                                 </>
@@ -2050,7 +2097,7 @@ export default function PatientDetail() {
         console.log("selectedVitalData", selectedVitalData)
         return (
             <div>
-                <div style={{ ...styles.tabsContainer, height: 32, justifyContent: 'flex-start', gap: 12 }}>
+                <div style={{ ...PatientStyles.tabsContainer, height: 32, justifyContent: 'flex-start', gap: 12 }}>
                     {vitalSignsData.map((vital, idx) => (
                         <div key={vital.id || idx} style={{ display: 'flex', alignItems: 'center' }}>
                             <button
@@ -2071,26 +2118,26 @@ export default function PatientDetail() {
                             vitalEditableUI()
                         )}
                         {getPrescriptionDateTitle(selectedVitalData.dateOfRecord) !== 'Today' && (
-                            <div style={styles.vitalsSummaryContainer} ref={vitalRef}>
-                                <div style={styles.vitalsSummaryWrapper}>
-                                    <div style={styles.vitalsSummaryCard}>
-                                        <div style={styles.vitalsSummaryHeader}>
+                            <div style={PatientStyles.vitalsSummaryContainer} ref={vitalRef}>
+                                <div style={PatientStyles.vitalsSummaryWrapper}>
+                                    <div style={PatientStyles.vitalsSummaryCard}>
+                                        <div style={PatientStyles.vitalsSummaryHeader}>
                                             {headerTable('Download vital signs as PDF', vitalRef, 'VitalSigns.pdf', '')}
                                         </div>
-                                        <div style={styles.vitalsSummaryContent}>
-                                            <div style={styles.flex1}>
-                                                <span style={styles.vitalsSummaryTitle}>Vital Signs :</span>
-                                                <div style={styles.vitalItem}>Temperature : <span style={styles.vitalValue}>{selectedVitalData?.temperature} ℃</span></div>
-                                                <div style={styles.vitalItem}>Heart Rate : <span style={styles.vitalValue}>{selectedVitalData?.heartRate} bpm</span></div>
-                                                <div style={styles.vitalItem}>Blood Pressure : <span style={styles.vitalValue}>{selectedVitalData?.bloodPressure} mmHg</span></div>
-                                                <div style={styles.vitalItem}>Respiratory Rate : <span style={styles.vitalValue}>{selectedVitalData?.respiratoryRate} per minute</span></div>
+                                        <div style={PatientStyles.vitalsSummaryContent}>
+                                            <div style={PatientStyles.flex1}>
+                                                <span style={PatientStyles.vitalsSummaryTitle}>Vital Signs :</span>
+                                                <div style={PatientStyles.vitalItem}>Temperature : <span style={PatientStyles.vitalValue}>{selectedVitalData?.temperature} ℃</span></div>
+                                                <div style={PatientStyles.vitalItem}>Heart Rate : <span style={PatientStyles.vitalValue}>{selectedVitalData?.heartRate} bpm</span></div>
+                                                <div style={PatientStyles.vitalItem}>Blood Pressure : <span style={PatientStyles.vitalValue}>{selectedVitalData?.bloodPressure} mmHg</span></div>
+                                                <div style={PatientStyles.vitalItem}>Respiratory Rate : <span style={PatientStyles.vitalValue}>{selectedVitalData?.respiratoryRate} per minute</span></div>
                                             </div>
-                                            <div style={styles.flex1}>
-                                                <span style={styles.vitalsSummaryTitle}>Basic Data :</span>
-                                                <div style={styles.vitalItem}>Age : <span style={styles.vitalValueBold}>{selectedVitalData?.age} Years</span></div>
-                                                <div style={styles.vitalItem}>Height : <span style={styles.vitalValue}>{selectedVitalData?.height} CM(s)</span></div>
-                                                <div style={styles.vitalItem}>Weight : <span style={styles.vitalValue}>{selectedVitalData?.weight} KG</span></div>
-                                                <div style={styles.vitalItem}>BMI : <span style={styles.vitalValueBold}>{selectedVitalData?.bmi}</span></div>
+                                            <div style={PatientStyles.flex1}>
+                                                <span style={PatientStyles.vitalsSummaryTitle}>Basic Data :</span>
+                                                <div style={PatientStyles.vitalItem}>Age : <span style={PatientStyles.vitalValueBold}>{selectedVitalData?.age} Years</span></div>
+                                                <div style={PatientStyles.vitalItem}>Height : <span style={PatientStyles.vitalValue}>{selectedVitalData?.height} CM(s)</span></div>
+                                                <div style={PatientStyles.vitalItem}>Weight : <span style={PatientStyles.vitalValue}>{selectedVitalData?.weight} KG</span></div>
+                                                <div style={PatientStyles.vitalItem}>BMI : <span style={PatientStyles.vitalValueBold}>{selectedVitalData?.bmi}</span></div>
                                             </div>
                                             <></>
                                         </div>
@@ -2159,35 +2206,35 @@ export default function PatientDetail() {
 
     const renderFamilyHistoryUI = () => {
         return (
-            <div className="patient-section" ref={familyHistoryRef} style={styles.relative}>
+            <div className="patient-section" ref={familyHistoryRef} style={PatientStyles.relative}>
                 {headerTable('Download Family Medical History as PDF', familyHistoryRef, 'FamilyMedicalHistory.pdf', 'Family Medical History')}
                 {!isEditingFamilyHistory ? (
                     <>
                         {/* Display Mode - Table View */}
                         <table
-                            style={styles.historyTable}
+                            style={PatientStyles.historyTable}
                         >
                             <thead>
-                                <tr style={styles.tableHeader}>
-                                    <th style={styles.tableTh}>Conditions</th>
-                                    <th style={styles.tableTh}>
+                                <tr style={PatientStyles.tableHeader}>
+                                    <th style={PatientStyles.tableTh}>Conditions</th>
+                                    <th style={PatientStyles.tableTh}>
                                         Family Members
                                     </th>
-                                    <th style={styles.tableTh}>Status</th>
+                                    <th style={PatientStyles.tableTh}>Status</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {(familyHistory && familyHistory.length > 0 ? familyHistory : []).map((item, idx) => (
-                                    <tr key={idx} style={styles.tableRow}>
-                                        <td style={styles.tableTd}>{item.condition_name}</td>
-                                        <td style={styles.tableTd}>{item.family_member}</td>
-                                        <td style={styles.tableTd}>{item.status}</td>
+                                    <tr key={idx} style={PatientStyles.tableRow}>
+                                        <td style={PatientStyles.tableTd}>{item.condition_name}</td>
+                                        <td style={PatientStyles.tableTd}>{item.family_member}</td>
+                                        <td style={PatientStyles.tableTd}>{item.status}</td>
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
 
-                        <div style={styles.actionButtonsContainer}>
+                        <div style={PatientStyles.actionButtonsContainer}>
                             <button
                                 onClick={() => {
                                     // Initialize edit mode with API data
@@ -2196,12 +2243,12 @@ export default function PatientDetail() {
                                     setEditingFamilyIdx(null);
                                     setIsEditingFamilyHistory(true);
                                 }}
-                                style={styles.editButton}
+                                style={PatientStyles.editButton}
                             >
                                 Edit
                             </button>
                             <button
-                                style={styles.updateButton}
+                                style={PatientStyles.updateButton}
                             >
                                 Update
                             </button>
@@ -2211,12 +2258,12 @@ export default function PatientDetail() {
                     <>
                         {/* Edit Mode - Form View */}
                         <div
-                            style={styles.formGrid3}
+                            style={PatientStyles.formGrid3}
                         >
                             {/* Conditions Input */}
                             <div>
                                 <label
-                                    style={styles.formLabel}
+                                    style={PatientStyles.formLabel}
                                 >
                                     Conditions
                                 </label>
@@ -2225,14 +2272,14 @@ export default function PatientDetail() {
                                     value={newFamilyEntry.condition_name}
                                     onChange={(e) => setNewFamilyEntry({ ...newFamilyEntry, condition_name: e.target.value })}
                                     placeholder="Enter Here..."
-                                    style={styles.formInput}
+                                    style={PatientStyles.formInput}
                                 />
                             </div>
 
                             {/* Family Members Input */}
                             <div>
                                 <label
-                                    style={styles.formLabel}
+                                    style={PatientStyles.formLabel}
                                 >
                                     Family Members
                                 </label>
@@ -2241,22 +2288,22 @@ export default function PatientDetail() {
                                     value={newFamilyEntry.family_member}
                                     onChange={(e) => setNewFamilyEntry({ ...newFamilyEntry, family_member: e.target.value })}
                                     placeholder="Enter Here..."
-                                    style={styles.formInput}
+                                    style={PatientStyles.formInput}
                                 />
                             </div>
 
                             {/* Status Dropdown */}
                             <div>
                                 <label
-                                    style={styles.formLabel}
+                                    style={PatientStyles.formLabel}
                                 >
                                     Status
                                 </label>
-                                <div style={styles.inputWithButton}>
+                                <div style={PatientStyles.inputWithButton}>
                                     <select
                                         value={newFamilyEntry.status}
                                         onChange={(e) => setNewFamilyEntry({ ...newFamilyEntry, status: e.target.value })}
-                                        style={styles.formSelect}
+                                        style={PatientStyles.formSelect}
                                     >
                                         <option value="">Select</option>
                                         <option value="Yes">Yes</option>
@@ -2264,7 +2311,7 @@ export default function PatientDetail() {
                                     </select>
                                     <button
                                         onClick={handleAddFamilyHistory}
-                                        style={styles.addEntryButton}
+                                        style={PatientStyles.addEntryButton}
                                         title={editingFamilyIdx !== null ? 'Update entry' : 'Add entry'}
                                     >
                                         {editingFamilyIdx !== null ? '✓' : '+'}
@@ -2275,43 +2322,43 @@ export default function PatientDetail() {
 
                         {/* Current Entries List */}
                         {Array.isArray(familyHistoryData) && familyHistoryData.length > 0 && (
-                            <div style={styles.marginBottom24}>
-                                <h4 style={styles.currentEntriesTitle}>Current Entries</h4>
+                            <div style={PatientStyles.marginBottom24}>
+                                <h4 style={PatientStyles.currentEntriesTitle}>Current Entries</h4>
                                 <table
-                                    style={styles.historyTable}
+                                    style={PatientStyles.historyTable}
                                 >
                                     <thead>
-                                        <tr style={styles.tableHeader}>
-                                            <th style={styles.tableTh}>
+                                        <tr style={PatientStyles.tableHeader}>
+                                            <th style={PatientStyles.tableTh}>
                                                 Conditions
                                             </th>
-                                            <th style={styles.tableTh}>
+                                            <th style={PatientStyles.tableTh}>
                                                 Family Members
                                             </th>
-                                            <th style={styles.tableTh}>
+                                            <th style={PatientStyles.tableTh}>
                                                 Status
                                             </th>
-                                            <th style={styles.tableThCenter}>
+                                            <th style={PatientStyles.tableThCenter}>
                                                 Actions
                                             </th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {familyHistoryData.map((item, idx) => (
-                                            <tr key={idx} style={styles.tableRow}>
-                                                <td style={styles.tableTd}>{item.condition_name}</td>
-                                                <td style={styles.tableTd}>{item.family_member}</td>
-                                                <td style={styles.tableTd}>{item.status}</td>
-                                                <td style={styles.tableTdCenter}>
+                                            <tr key={idx} style={PatientStyles.tableRow}>
+                                                <td style={PatientStyles.tableTd}>{item.condition_name}</td>
+                                                <td style={PatientStyles.tableTd}>{item.family_member}</td>
+                                                <td style={PatientStyles.tableTd}>{item.status}</td>
+                                                <td style={PatientStyles.tableTdCenter}>
                                                     <button
                                                         onClick={() => handleEditFamilyHistory(idx)}
-                                                        style={styles.editTableButton}
+                                                        style={PatientStyles.editTableButton}
                                                     >
                                                         Edit
                                                     </button>
                                                     <button
                                                         onClick={() => handleDeleteFamilyHistory(idx)}
-                                                        style={styles.deleteTableButton}
+                                                        style={PatientStyles.deleteTableButton}
                                                     >
                                                         Delete
                                                     </button>
@@ -2324,17 +2371,17 @@ export default function PatientDetail() {
                         )}
 
                         {/* Action Buttons */}
-                        <div style={styles.actionButtonsContainerCenter}>
+                        <div style={PatientStyles.actionButtonsContainerCenter}>
                             <button
                                 onClick={handleCancelEditingFamilyHistory}
-                                style={styles.cancelButton}
+                                style={PatientStyles.cancelButton}
                             >
                                 Cancel
                             </button>
                             <button
                                 onClick={insertFamilyHistory}
                                 disabled={loading}
-                                style={{ ...styles.updateButtonLarge, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.6 : 1 }}
+                                style={{ ...PatientStyles.updateButtonLarge, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.6 : 1 }}
                             >
                                 {loading ? 'Updating...' : 'Update'}
                             </button>
@@ -2345,50 +2392,10 @@ export default function PatientDetail() {
         )
     }
 
-    const getTodayDate = () => {
-        const today = new Date();
-
-        // format options to extract year, month, and day for Asia/Kolkata
-        const options = {
-            timeZone: 'Asia/Kolkata',
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit'
-        };
-
-        const formatter = new Intl.DateTimeFormat('en-CA', options); // 'en-CA' gives YYYY-MM-DD
-        return formatter.format(today);
-    };
-
-    const getYesterday = () => {
-        const today = new Date();
-        const yesterday = new Date(today);
-        yesterday.setDate(today.getDate() - 1);
-        const options = {
-            timeZone: 'Asia/Kolkata',
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit'
-        }
-
-        const formatter = new Intl.DateTimeFormat('en-CA', options);
-        return formatter.format(yesterday);
-    }
-
-    const getPrescriptionDateTitle = (date) => {
-        if (date === getTodayDate()) {
-            return 'Today';
-        } else if (date === getYesterday()) {
-            return 'Yesterday';
-        } else {
-            return date;
-        }
-    };
-
     const renderPrescriptionUI = () => {
         return (
             <div className="patient-section" ref={prescriptionRef} style={{ position: 'relative' }}>
-                <div style={{ ...styles.tabsContainer, height: 32, justifyContent: 'flex-start', gap: 12 }}>
+                <div style={{ ...PatientStyles.tabsContainer, height: 32, justifyContent: 'flex-start', gap: 12 }}>
                     {Object.keys(groupedPrescriptions).sort((a, b) => new Date(b) - new Date(a)).map((date, idx) => (
                         <div key={date} style={{ display: 'flex', alignItems: 'center' }}>
                             <button
@@ -2409,222 +2416,226 @@ export default function PatientDetail() {
                         <tr>
                             <th>No.</th>
                             <th>Medicine Name</th>
-                            <th style={styles.tableCellViewSmall}>Quantity</th>
-                            <th>Forenoon</th>
-                            <th>Afternoon</th>
-                            <th>Evening</th>
-                            <th>Night</th>
-                            <th>Dose Timing</th>
-                            <th>Eating Type</th>
+                            <th style={PatientStyles.tableCellViewSmall}>Quantity</th>
+                            <th><div className='thDivMid'>Forenoon</div></th>
+                            <th><div className='thDivMid'>Afternoon</div></th>
+                            <th><div className='thDivMid'>Evening</div></th>
+                            <th><div className='thDivMid'>Night</div></th>
+                            <th><div className='thDivMid'>Dose Timing</div></th>
+                            <th><div className='thDivMid'>Eating Type</div></th>
                         </tr>
                     </thead>
                     <tbody>
-                        {prescriptions.length !== 0 && prescriptions.map((med, idx) => (
+                        {Array.isArray(prescriptions) && prescriptions.length > 0 && prescriptions.map((med, idx) => (
                             <tr key={med.id || idx}>
-                                <td style={styles.tableCellViewSmall}> <div className='tdDivLeft'>{idx + 1 < 10 ? `0${idx + 1}.` : `${idx + 1}.`}</div></td>
+                                <td style={PatientStyles.tableCellViewSmall}> <div className='tdDivLeft'>{idx + 1 < 10 ? `0${idx + 1}.` : `${idx + 1}.`}</div></td>
                                 <td> <div className='tdDivLeft'>{med.medicine_name}</div></td>
-                                <td style={styles.tableCellViewSmall}><div className='tdDivMid'>{med.quantity}</div></td>
-                                <td style={styles.tableCellViewMid}><div className='tdDivMid'>{med.frequency_F}</div></td>
-                                <td style={styles.tableCellViewMid}><div className='tdDivMid'>{med.frequency_A}</div></td>
-                                <td style={styles.tableCellViewMid}><div className='tdDivMid'>{med.frequency_E}</div></td>
-                                <td style={styles.tableCellViewMid}><div className='tdDivMid'>{med.frequency_N}</div></td>
-                                <td style={styles.tableCellViewNormal}><div className='tdDivMid'>{med.dosageTiming}</div></td>
-                                <td style={styles.tableCellViewNormal}><div className='tdDivMid'>{med.eatType}</div></td>
-                                <td style={styles.tableCellAction}>
-                                    <button
-                                        onClick={() => handleEditPrescription(idx)}
-                                        disabled={editingIdx !== null}
-                                        style={
-                                            {
-                                                ...styles.presEditButton,
-                                                cursor: editingIdx !== null ? 'not-allowed' : 'pointer',
-                                                opacity: editingIdx !== null ? 0.5 : 1,
+                                <td style={PatientStyles.tableCellViewSmall}><div className='tdDivMid'>{med.quantity}</div></td>
+                                <td style={PatientStyles.tableCellViewMid}><div className='tdDivMid'>{med.frequency_F ?? 'None'}</div></td>
+                                <td style={PatientStyles.tableCellViewMid}><div className='tdDivMid'>{med.frequency_A ?? 'None'}</div></td>
+                                <td style={PatientStyles.tableCellViewMid}><div className='tdDivMid'>{med.frequency_E ?? 'None'}</div></td>
+                                <td style={PatientStyles.tableCellViewMid}><div className='tdDivMid'>{med.frequency_N ?? 'None'}</div></td>
+                                <td style={PatientStyles.tableCellViewNormal}><div className='tdDivMid'>{med.dosageTiming ?? 'None'}</div></td>
+                                <td style={PatientStyles.tableCellViewNormal}><div className='tdDivMid'>{med.eatType ?? 'None'}</div></td>
+                                {getPrescriptionDateTitle(selectedPrescriptionDate) === 'Today' && (
+                                    <td style={PatientStyles.tableCellAction}>
+                                        <button
+                                            onClick={() => handleEditPrescription(idx)}
+                                            disabled={editingIdx !== null}
+                                            style={
+                                                {
+                                                    ...PatientStyles.presEditButton,
+                                                    cursor: editingIdx !== null ? 'not-allowed' : 'pointer',
+                                                    opacity: editingIdx !== null ? 0.5 : 1,
+                                                }
                                             }
-                                        }
-                                    >
-                                        Edit
-                                    </button>
-                                    <button
-                                        onClick={() => handleRemovePrescription(idx)}
-                                        disabled={editingIdx !== null}
-                                        style={
-                                            {
-                                                ...styles.removeTableButton,
-                                                cursor: editingIdx !== null ? 'not-allowed' : 'pointer',
-                                                opacity: editingIdx !== null ? 0.5 : 1,
+                                        >
+                                            Edit
+                                        </button>
+                                        <button
+                                            onClick={() => handleRemovePrescription(idx)}
+                                            disabled={editingIdx !== null}
+                                            style={
+                                                {
+                                                    ...PatientStyles.removeTableButton,
+                                                    cursor: editingIdx !== null ? 'not-allowed' : 'pointer',
+                                                    opacity: editingIdx !== null ? 0.5 : 1,
+                                                }
                                             }
-                                        }
-                                    >
-                                        Remove
-                                    </button>
+                                        >
+                                            Remove
+                                        </button>
 
-                                </td>
+                                    </td>
+                                )}
                             </tr>
                         ))}
-                        <tr>
-                            <td><div className='tdDivPlain'>{editingIdx !== null ? editingIdx + 1 : prescriptions.length + 1}</div></td>
-                            <td style={{ padding: '8px' }}>
-                                <div style={{ display: 'flex', gap: 6 }}>
-                                    <input
-                                        ref={medicineNameInputRef}
-                                        value={newPrescription.medicineName}
-                                        // value={listening && activeField === 'medicineName' ? text : newPrescription.medicineName}
-                                        onChange={(e) => handlePrescriptionChange(e, 'medicineName')}
-                                        placeholder="Medicine Name"
-                                        style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
-                                    />
-                                    <button className='micBtn' onClick={() => startListening('medicineName')}>🎤</button>
-                                </div>
-                            </td>
-                            <td style={{ padding: '8px' }}>
-                                <div style={{ display: 'flex', gap: 6 }}>
-                                    <select
-                                        value={newPrescription.quantity}
-                                        onChange={(e) => handlePrescriptionChange(e, 'quantity')}
-                                        style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
-                                    >
-                                        {Array.from({ length: 60 }, (_, i) => i + 1).map((num) => (
-                                            <option key={num} value={num}>
-                                                {num}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                            </td>
-                            <td style={{ padding: '8px' }}>
-                                <div style={{ display: 'flex', gap: 6 }}>
-                                    <select
-                                        value={newPrescription.frequency.F}
-                                        onChange={(e) => handlePrescriptionChange(e, 'frequency', 'F')}
-                                        style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
-                                    >
-                                        {FREQUENCY_OPTIONS.map((num) => (
-                                            <option key={num} value={num}>
-                                                {num}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                            </td>
-                            <td style={{ padding: '8px' }}>
-                                <div style={{ display: 'flex', gap: 6 }}>
-                                    <select
-                                        value={newPrescription.frequency.A}
-                                        onChange={(e) => handlePrescriptionChange(e, 'frequency', 'A')}
-                                        style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
-                                    >
-                                        {FREQUENCY_OPTIONS.map((num) => (
-                                            <option key={num} value={num}>
-                                                {num}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                            </td>
-                            <td style={{ padding: '8px' }}>
-                                <div style={{ display: 'flex', gap: 6 }}>
-                                    <select
-                                        value={newPrescription.frequency.E}
-                                        onChange={(e) => handlePrescriptionChange(e, 'frequency', 'E')}
-                                        style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
-                                    >
-                                        {FREQUENCY_OPTIONS.map((num) => (
-                                            <option key={num} value={num}>
-                                                {num}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                            </td>
-                            <td style={{ padding: '8px' }}>
-                                <div style={{ display: 'flex', gap: 6 }}>
-                                    <select
-                                        value={newPrescription.frequency.N}
-                                        onChange={(e) => handlePrescriptionChange(e, 'frequency', 'N')}
-                                        style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
-                                    >
-                                        {FREQUENCY_OPTIONS.map((num) => (
-                                            <option key={num} value={num}>
-                                                {num}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                            </td>
-                            <td style={{ padding: '8px' }}>
-                                <div style={{ display: 'flex', gap: 6 }}>
-                                    <select
-                                        value={newPrescription.dosageTiming}
-                                        onChange={(e) => handlePrescriptionChange(e, 'dosageTiming')}
-                                        style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
-                                    >
-                                        {PatientDoseDropdownModel.sort((a, b) => a.index - b.index).map((item) => (
-                                            <option key={item.value} value={item.value}>
-                                                {item.displayTitle}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                            </td>
-                            <td style={{ padding: '8px' }}>
-                                <div style={{ display: 'flex', gap: 6 }}>
-                                    <select
-                                        value={newPrescription.eatingType}
-                                        onChange={(e) => handlePrescriptionChange(e, 'eatingType')}
-                                        style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
-                                    >
-                                        {PatientEatingTypeDropdownModel.sort((a, b) => a.index - b.index).map((item) => (
-                                            <option key={item.value} value={item.value}>
-                                                {item.displayTitle}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                            </td>
-                            <td style={{ padding: '8px', verticalAlign: 'middle' }}>
-                                <div style={{ display: 'flex', gap: 8 }}>
-                                    {editingIdx !== null && (
-                                        <>
-                                            <button
-                                                onClick={handleUpdatePrescription}
-                                                disabled={isPrescriptionUnchanged}
-                                                style={{
-                                                    ...styles.updatePrescriptionButton,
-                                                    background: isPrescriptionUnchanged ? '#ccc' : '#0070f3',
-                                                    border: `1px solid ${isPrescriptionUnchanged ? '#ccc' : '#0070f3'}`,
-                                                    cursor: isPrescriptionUnchanged ? 'not-allowed' : 'pointer',
-                                                }}
-                                            >
-                                                Update
-                                            </button>
-                                            <button
-                                                style={styles.presCancelButton}
-                                                onClick={handleCancelEditPrescription}
-                                            >
-                                                Cancel
-                                            </button>
-                                        </>
-                                    )}
-                                    {editingIdx === null && (
-                                        <button
-                                            style={styles.addButton}
-                                            onClick={handleUpdatePrescription}
+                        {getPrescriptionDateTitle(selectedPrescriptionDate) === 'Today' && (
+                            <tr>
+                                <td><div className='tdDivPlain'>{editingIdx !== null ? editingIdx + 1 : prescriptions.length + 1}</div></td>
+                                <td style={{ padding: '8px' }}>
+                                    <div style={{ display: 'flex', gap: 6 }}>
+                                        <input
+                                            ref={medicineNameInputRef}
+                                            value={newPrescription.medicineName}
+                                            // value={listening && activeField === 'medicineName' ? text : newPrescription.medicineName}
+                                            onChange={(e) => handlePrescriptionChange(e, 'medicineName')}
+                                            placeholder="Medicine Name"
+                                            style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
+                                        />
+                                        <button className='micBtn' onClick={() => startListening('medicineName')}>🎤</button>
+                                    </div>
+                                </td>
+                                <td style={{ padding: '8px' }}>
+                                    <div style={{ display: 'flex', gap: 6 }}>
+                                        <select
+                                            value={newPrescription.quantity}
+                                            onChange={(e) => handlePrescriptionChange(e, 'quantity')}
+                                            style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
                                         >
-                                            Add
-                                        </button>
-                                    )}
+                                            {Array.from({ length: 60 }, (_, i) => i + 1).map((num) => (
+                                                <option key={num} value={num}>
+                                                    {num}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </td>
+                                <td style={{ padding: '8px' }}>
+                                    <div style={{ display: 'flex', gap: 6 }}>
+                                        <select
+                                            value={newPrescription.frequency.F}
+                                            onChange={(e) => handlePrescriptionChange(e, 'frequency', 'F')}
+                                            style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
+                                        >
+                                            {FREQUENCY_OPTIONS.map((num) => (
+                                                <option key={num} value={num}>
+                                                    {num}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </td>
+                                <td style={{ padding: '8px' }}>
+                                    <div style={{ display: 'flex', gap: 6 }}>
+                                        <select
+                                            value={newPrescription.frequency.A}
+                                            onChange={(e) => handlePrescriptionChange(e, 'frequency', 'A')}
+                                            style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
+                                        >
+                                            {FREQUENCY_OPTIONS.map((num) => (
+                                                <option key={num} value={num}>
+                                                    {num}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </td>
+                                <td style={{ padding: '8px' }}>
+                                    <div style={{ display: 'flex', gap: 6 }}>
+                                        <select
+                                            value={newPrescription.frequency.E}
+                                            onChange={(e) => handlePrescriptionChange(e, 'frequency', 'E')}
+                                            style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
+                                        >
+                                            {FREQUENCY_OPTIONS.map((num) => (
+                                                <option key={num} value={num}>
+                                                    {num}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </td>
+                                <td style={{ padding: '8px' }}>
+                                    <div style={{ display: 'flex', gap: 6 }}>
+                                        <select
+                                            value={newPrescription.frequency.N}
+                                            onChange={(e) => handlePrescriptionChange(e, 'frequency', 'N')}
+                                            style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
+                                        >
+                                            {FREQUENCY_OPTIONS.map((num) => (
+                                                <option key={num} value={num}>
+                                                    {num}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </td>
+                                <td style={{ padding: '8px' }}>
+                                    <div style={{ display: 'flex', gap: 6 }}>
+                                        <select
+                                            value={newPrescription.dosageTiming}
+                                            onChange={(e) => handlePrescriptionChange(e, 'dosageTiming')}
+                                            style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
+                                        >
+                                            {PatientDoseDropdownModel.sort((a, b) => a.index - b.index).map((item) => (
+                                                <option key={item.value} value={item.value}>
+                                                    {item.displayTitle}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </td>
+                                <td style={{ padding: '8px' }}>
+                                    <div style={{ display: 'flex', gap: 6 }}>
+                                        <select
+                                            value={newPrescription.eatingType}
+                                            onChange={(e) => handlePrescriptionChange(e, 'eatingType')}
+                                            style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
+                                        >
+                                            {PatientEatingTypeDropdownModel.sort((a, b) => a.index - b.index).map((item) => (
+                                                <option key={item.value} value={item.value}>
+                                                    {item.displayTitle}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </td>
+                                <td style={{ padding: '8px', verticalAlign: 'middle' }}>
+                                    <div style={{ display: 'flex', gap: 8 }}>
+                                        {editingIdx !== null && (
+                                            <>
+                                                <button
+                                                    onClick={handleUpdatePrescription}
+                                                    disabled={isPrescriptionUnchanged}
+                                                    style={{
+                                                        ...PatientStyles.updatePrescriptionButton,
+                                                        background: isPrescriptionUnchanged ? '#ccc' : '#0070f3',
+                                                        border: `1px solid ${isPrescriptionUnchanged ? '#ccc' : '#0070f3'}`,
+                                                        cursor: isPrescriptionUnchanged ? 'not-allowed' : 'pointer',
+                                                    }}
+                                                >
+                                                    Update
+                                                </button>
+                                                <button
+                                                    style={PatientStyles.presCancelButton}
+                                                    onClick={handleCancelEditPrescription}
+                                                >
+                                                    Cancel
+                                                </button>
+                                            </>
+                                        )}
+                                        {editingIdx === null && (
+                                            <button
+                                                style={PatientStyles.addButton}
+                                                onClick={handleUpdatePrescription}
+                                            >
+                                                Add
+                                            </button>
+                                        )}
 
-                                </div>
-                            </td>
-                        </tr>
+                                    </div>
+                                </td>
+                            </tr>
+                        )}
                     </tbody>
                 </table>
-                {prescriptions.length === 0 && (
-                    <div style={styles.centerContent}>
-                        <label style={styles.noDataLabel}>
+                {(!Array.isArray(prescriptions) || prescriptions.length === 0) && (
+                    <div style={PatientStyles.centerContent}>
+                        <label style={PatientStyles.noDataLabel}>
                             No prescriptions found.
                         </label>
-                        <label style={styles.noDataLabel}>
+                        <label style={PatientStyles.noDataLabel}>
                             Please add prescription details to display here.
                         </label>
                     </div>
@@ -2645,12 +2656,12 @@ export default function PatientDetail() {
      */
     const renderPresentUI = () => {
         return (
-            <div className="patient-section" ref={presentRef} style={styles.relative}>
+            <div className="patient-section" ref={presentRef} style={PatientStyles.relative}>
                 {headerTable('Download Present Symptoms as PDF', presentRef, 'PresentSymptoms.pdf', 'Present Symptoms')}
                 {/* Date Picker */}
-                <div style={styles.datePickerContainer}>
-                    <div style={styles.datePickerWrapper}>
-                        <label style={styles.formLabel}>
+                <div style={PatientStyles.datePickerContainer}>
+                    <div style={PatientStyles.datePickerWrapper}>
+                        <label style={PatientStyles.formLabel}>
                             Select Date
                         </label>
                         <input
@@ -2660,47 +2671,47 @@ export default function PatientDetail() {
                                 setSelectedDate(e.target.value);
                                 getSymptomsData(e.target.value);
                             }}
-                            style={styles.formInput}
+                            style={PatientStyles.formInput}
                         />
                     </div>
                 </div>
 
                 {/* Loading State */}
-                {loading && <div style={styles.loadingText}>Loading symptoms data...</div>}
+                {loading && <div style={PatientStyles.loadingText}>Loading symptoms data...</div>}
 
                 {/* Error State */}
                 {/* {error && <div style={{ padding: 12, background: '#ffebee', borderRadius: 6, color: '#c62828', marginBottom: 20 }}>{error}</div>} */}
 
                 {/* No Data State */}
                 {selectedDate && !symptomsData && !loading && (
-                    <div style={styles.noDataContainer}>
-                        <p style={styles.noDataText}>No symptoms data available for the selected date</p>
+                    <div style={PatientStyles.noDataContainer}>
+                        <p style={PatientStyles.noDataText}>No symptoms data available for the selected date</p>
                     </div>
                 )}
 
                 {/* View Mode - Display symptoms data */}
                 {symptomsData && !isEditingSymptoms && (
                     <>
-                        <div style={styles.symptomsGrid}>
+                        <div style={PatientStyles.symptomsGrid}>
                             {/* Left Column */}
                             <div>
-                                <div style={styles.marginBottom20}>
-                                    <label style={styles.symptomLabel}>Chief Complaint</label>
-                                    <p style={styles.symptomValue}>
+                                <div style={PatientStyles.marginBottom20}>
+                                    <label style={PatientStyles.symptomLabel}>Chief Complaint</label>
+                                    <p style={PatientStyles.symptomValue}>
                                         {symptomsData[0].chief_complaint || 'N/A'}
                                     </p>
                                 </div>
 
-                                <div style={styles.marginBottom20}>
-                                    <label style={styles.symptomLabel}>Onset, Duration, Severity</label>
-                                    <p style={styles.symptomValue}>
+                                <div style={PatientStyles.marginBottom20}>
+                                    <label style={PatientStyles.symptomLabel}>Onset, Duration, Severity</label>
+                                    <p style={PatientStyles.symptomValue}>
                                         {symptomsData[0].onset_duration_severity || 'N/A'}
                                     </p>
                                 </div>
 
-                                <div style={styles.marginBottom20}>
-                                    <label style={styles.symptomLabel}>Associated Symptoms</label>
-                                    <p style={styles.symptomValue}>
+                                <div style={PatientStyles.marginBottom20}>
+                                    <label style={PatientStyles.symptomLabel}>Associated Symptoms</label>
+                                    <p style={PatientStyles.symptomValue}>
                                         {symptomsData[0].associated_symptoms || 'N/A'}
                                     </p>
                                 </div>
@@ -2708,33 +2719,33 @@ export default function PatientDetail() {
 
                             {/* Right Column */}
                             <div>
-                                <div style={styles.marginBottom20}>
-                                    <label style={styles.symptomLabel}>Consulting Doctor</label>
-                                    <p style={styles.symptomValue}>
+                                <div style={PatientStyles.marginBottom20}>
+                                    <label style={PatientStyles.symptomLabel}>Consulting Doctor</label>
+                                    <p style={PatientStyles.symptomValue}>
                                         {symptomsData[0].consulting_doctor || 'N/A'}
                                     </p>
                                 </div>
 
-                                <div style={styles.marginBottom20}>
-                                    <label style={styles.symptomLabel}>Aggravating / Relieving Factor</label>
-                                    <p style={styles.symptomValue}>
+                                <div style={PatientStyles.marginBottom20}>
+                                    <label style={PatientStyles.symptomLabel}>Aggravating / Relieving Factor</label>
+                                    <p style={PatientStyles.symptomValue}>
                                         {symptomsData[0].aggravating_relief_factor || 'N/A'}
                                     </p>
                                 </div>
 
-                                <div style={styles.marginBottom20}>
-                                    <label style={styles.symptomLabel}>Next visit Date</label>
-                                    <p style={styles.symptomValue}>
+                                <div style={PatientStyles.marginBottom20}>
+                                    <label style={PatientStyles.symptomLabel}>Next visit Date</label>
+                                    <p style={PatientStyles.symptomValue}>
                                         {symptomsData[0].next_visit_date || 'N/A'}
                                     </p>
                                 </div>
                             </div>
                         </div>
 
-                        <div style={styles.actionButtonsContainer}>
+                        <div style={PatientStyles.actionButtonsContainer}>
                             <button
                                 onClick={() => setIsEditingSymptoms(true)}
-                                style={styles.editButton}
+                                style={PatientStyles.editButton}
                             >
                                 Edit
                             </button>
@@ -2989,46 +3000,46 @@ export default function PatientDetail() {
 
     const renderMeetingProcessUI = () => {
         return (
-            <div className="patient-section" style={styles.marginTop24}>
+            <div className="patient-section" style={PatientStyles.marginTop24}>
                 <h3>Meeting Process</h3>
-                <div style={styles.meetingProcessControls}>
+                <div style={PatientStyles.meetingProcessControls}>
                     <div>
-                        <label style={styles.smallLabel}>Meeting ID</label>
+                        <label style={PatientStyles.smallLabel}>Meeting ID</label>
                         <input
                             type="text"
                             value={meetingIdInput}
                             onChange={(e) => setMeetingIdInput(e.target.value)}
                             placeholder="Enter meeting ID"
-                            style={styles.smallInput}
+                            style={PatientStyles.smallInput}
                         />
                     </div>
                     <div>
-                        <label style={styles.smallLabel}>Patient ID</label>
+                        <label style={PatientStyles.smallLabel}>Patient ID</label>
                         <input
                             type="text"
                             value={patientIdInput}
                             onChange={(e) => setPatientIdInput(e.target.value)}
                             placeholder="Enter patient id"
-                            style={styles.smallInput}
+                            style={PatientStyles.smallInput}
                         />
                     </div>
                     <div>
-                        <label style={styles.smallLabel}>Language</label>
+                        <label style={PatientStyles.smallLabel}>Language</label>
                         <select
                             value={languageOption}
                             onChange={(e) => setLanguageOption(e.target.value)}
-                            style={styles.smallSelect}
+                            style={PatientStyles.smallSelect}
                         >
                             <option value="en">en</option>
                             <option value="ta">ta</option>
                         </select>
                     </div>
-                    <div style={styles.meetingProcessActions}>
+                    <div style={PatientStyles.meetingProcessActions}>
                         <button
                             onClick={getMeetingProcess}
                             disabled={loading}
                             style={{
-                                ...styles.processButton,
+                                ...PatientStyles.processButton,
                                 background: loading ? '#ccc' : '#0a66ff',
                                 cursor: loading ? 'not-allowed' : 'pointer',
                             }}
@@ -3042,23 +3053,23 @@ export default function PatientDetail() {
                                 setLanguageOption('en');
                                 setError('');
                             }}
-                            style={styles.resetButton}
+                            style={PatientStyles.resetButton}
                         >
                             Reset
                         </button>
                     </div>
                 </div>
 
-                {error && <div style={styles.errorText}>{error}</div>}
+                {error && <div style={PatientStyles.errorText}>{error}</div>}
                 {meetingprocess && meetingprocess.data ? (
-                    <div style={styles.marginTop24}>
+                    <div style={PatientStyles.marginTop24}>
                         {/* Remedies Section */}
-                        <div style={styles.marginBottom24}>
-                            <h4 style={styles.subSectionTitle}>Remedies</h4>
+                        <div style={PatientStyles.marginBottom24}>
+                            <h4 style={PatientStyles.subSectionTitle}>Remedies</h4>
                             {Array.isArray(meetingprocess.data.remedies) && meetingprocess.data.remedies.length > 0 ? (
-                                <ul style={styles.list}>
+                                <ul style={PatientStyles.list}>
                                     {meetingprocess.data.remedies.map((remedy, idx) => (
-                                        <li key={idx} style={styles.listItem}>
+                                        <li key={idx} style={PatientStyles.listItem}>
                                             <b>Medicine:</b> {remedy.medicine} <br />
                                             <b>Dosage:</b> {remedy.dosage} <br />
                                             <b>Purpose:</b> {remedy.purpose}
@@ -3066,15 +3077,15 @@ export default function PatientDetail() {
                                     ))}
                                 </ul>
                             ) : (
-                                <div style={styles.noDataText}>No remedies found</div>
+                                <div style={PatientStyles.noDataText}>No remedies found</div>
                             )}
                         </div>
 
                         {/* Tests Section */}
-                        <div style={styles.marginBottom24}>
-                            <h4 style={styles.subSectionTitle}>Tests</h4>
+                        <div style={PatientStyles.marginBottom24}>
+                            <h4 style={PatientStyles.subSectionTitle}>Tests</h4>
                             {Array.isArray(meetingprocess.data.tests) && meetingprocess.data.tests.length > 0 ? (
-                                <ul style={styles.list}>
+                                <ul style={PatientStyles.list}>
                                     {meetingprocess.data.tests.map((test, idx) => (
                                         <li key={idx}>{test}</li>
                                     ))}
@@ -3085,10 +3096,10 @@ export default function PatientDetail() {
                         </div>
 
                         {/* Follow Ups Section */}
-                        <div style={styles.marginBottom24}>
-                            <h4 style={styles.subSectionTitle}>Follow Ups</h4>
+                        <div style={PatientStyles.marginBottom24}>
+                            <h4 style={PatientStyles.subSectionTitle}>Follow Ups</h4>
                             {Array.isArray(meetingprocess.data.follow_ups) && meetingprocess.data.follow_ups.length > 0 ? (
-                                <ul style={styles.list}>
+                                <ul style={PatientStyles.list}>
                                     {meetingprocess.data.follow_ups.map((follow, idx) => (
                                         <li key={idx}>{follow}</li>
                                     ))}
@@ -3099,10 +3110,10 @@ export default function PatientDetail() {
                         </div>
 
                         {/* Other Section */}
-                        <div style={styles.marginBottom24}>
-                            <h4 style={styles.subSectionTitle}>Other</h4>
+                        <div style={PatientStyles.marginBottom24}>
+                            <h4 style={PatientStyles.subSectionTitle}>Other</h4>
                             {Array.isArray(meetingprocess.data.other) && meetingprocess.data.other.length > 0 ? (
-                                <ul style={styles.list}>
+                                <ul style={PatientStyles.list}>
                                     {meetingprocess.data.other.map((other, idx) => (
                                         <li key={idx}>{other}</li>
                                     ))}
@@ -3113,27 +3124,27 @@ export default function PatientDetail() {
                         </div>
 
                         {/* Prescription Section */}
-                        <div style={styles.marginBottom24}>
-                            <h4 style={styles.subSectionTitle}>Prescription</h4>
+                        <div style={PatientStyles.marginBottom24}>
+                            <h4 style={PatientStyles.subSectionTitle}>Prescription</h4>
                             {meetingprocess.data.prescription && Array.isArray(meetingprocess.data.prescription.prescription) && meetingprocess.data.prescription.prescription.length > 0 ? (
-                                <table style={styles.summaryTable}>
+                                <table style={PatientStyles.summaryTable}>
                                     <thead>
-                                        <tr style={styles.summaryTableHeader}>
-                                            <th style={styles.summaryTableTh}>Medicine Name</th>
-                                            <th style={styles.summaryTableTh}>Quantity</th>
-                                            <th style={styles.summaryTableTh}>Frequency</th>
+                                        <tr style={PatientStyles.summaryTableHeader}>
+                                            <th style={PatientStyles.summaryTableTh}>Medicine Name</th>
+                                            <th style={PatientStyles.summaryTableTh}>Quantity</th>
+                                            <th style={PatientStyles.summaryTableTh}>Frequency</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {meetingprocess.data.prescription.prescription.map((item, idx) => (
                                             <tr key={idx}>
-                                                <td style={styles.summaryTableTd}>{item.medicineName}</td>
-                                                <td style={styles.summaryTableTd}>{item.quantity}</td>
-                                                <td style={styles.summaryTableTd}>
+                                                <td style={PatientStyles.summaryTableTd}>{item.medicineName}</td>
+                                                <td style={PatientStyles.summaryTableTd}>{item.quantity}</td>
+                                                <td style={PatientStyles.summaryTableTd}>
                                                     {item.frequency && typeof item.frequency === 'object' ? (
                                                         <div>
                                                             {Object.entries(item.frequency).map(([freqKey, freqVal]) => (
-                                                                <div key={freqKey} style={styles.marginBottom4}>
+                                                                <div key={freqKey} style={PatientStyles.marginBottom4}>
                                                                     <b>{freqKey}:</b> AF: {freqVal.AF}, BF: {freqVal.BF}
                                                                 </div>
                                                             ))}
@@ -3145,12 +3156,12 @@ export default function PatientDetail() {
                                     </tbody>
                                 </table>
                             ) : (
-                                <div style={styles.noDataText}>No prescription found</div>
+                                <div style={PatientStyles.noDataText}>No prescription found</div>
                             )}
                         </div>
                     </div>
                 ) : (
-                    <div style={styles.noDataFound}>
+                    <div style={PatientStyles.noDataFound}>
                         No data found
                     </div>
                 )}
@@ -3160,176 +3171,196 @@ export default function PatientDetail() {
 
     const renderDiagnosticUI = () => {
         return (
-            <div className="diagnostic-section" ref={diagnosticRef} style={styles.diagnosticSection}>
+            <div className="diagnostic-section" ref={diagnosticRef} style={PatientStyles.diagnosticSection}>
+                <div style={{ ...PatientStyles.tabsContainer, height: 32, justifyContent: 'flex-start', gap: 12 }}>
+                    {Object.keys(groupedInvestigations).sort((a, b) => new Date(b) - new Date(a)).map((date, idx) => (
+                        <div key={date} style={{ display: 'flex', alignItems: 'center' }}>
+                            <button
+                                style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 0 }}
+                                onClick={() => {
+                                    setSelectedInvestigationDate(date);
+                                    setInvestigationData(groupedInvestigations[date] || []);
+                                }}
+                            >
+                                <h4 style={{
+                                    color: selectedInvestigationDate === date ? '#000000' : '#8C8C8C',
+                                    fontSize: 16, fontWeight: selectedInvestigationDate === date ? 'bold' : 'normal', textAlign: 'left', margin: 0
+                                }}>{getPrescriptionDateTitle(date)}</h4>
+                            </button>
+                        </div>
+                    ))}
+                </div>
                 {headerTable('Download Diagnostic as PDF', diagnosticRef, 'Diagnostic.pdf', 'Diagnostic Investigation')}
-                <div style={styles.searchContainer}>
+                <div style={PatientStyles.searchContainer}>
                     <input
                         type="search"
                         placeholder="Search"
-                        style={styles.searchInput}
+                        style={PatientStyles.searchInput}
                     />
                 </div>
-                <div style={styles.diagnosticContent}>
-                    <div style={styles.flex1}>
+                <div style={PatientStyles.diagnosticContent}>
+                    <div style={PatientStyles.flex1}>
                         {/* Investigation inputs on left side */}
-                        <div style={styles.investigationFormCard}>
-                            <h4 style={styles.marginTop0}>Add Investigation</h4>
-                            <div style={styles.formGrid1}>
-                                <div>
-                                    <label style={styles.smallLabel}>Investigation Type</label>
-                                    <input
-                                        value={investigationTypeInput}
-                                        onChange={(e) => setInvestigationTypeInput(e.target.value)}
-                                        placeholder="e.g. ECG"
-                                        style={styles.smallInput}
-                                    />
-                                </div>
-                                <div>
-                                    <label style={styles.smallLabel}>Description</label>
-                                    <textarea
-                                        value={investigationDescriptionInput}
-                                        onChange={(e) => setInvestigationDescriptionInput(e.target.value)}
-                                        placeholder="Short description..."
-                                        rows={3}
-                                        style={styles.textarea}
-                                    />
-                                </div>
-                                <div style={styles.formActions}>
-                                    <button
-                                        onClick={() => { setInvestigationTypeInput(''); setInvestigationDescriptionInput(''); setImages([]); }}
-                                        style={styles.resetButtonSmall}
-                                    >
-                                        Reset
-                                    </button>
-                                    <button
-                                        onClick={handleSubmitInvestigation}
-                                        style={styles.saveButtonSmall}
-                                    >
-                                        Save
-                                    </button>
+                        {getPrescriptionDateTitle(selectedInvestigationDate) === 'Today' && (
+                            <div style={PatientStyles.investigationFormCard}>
+                                <h4 style={PatientStyles.marginTop0}>Add Investigation</h4>
+                                <div style={PatientStyles.formGrid1}>
+                                    <div>
+                                        <label style={PatientStyles.smallLabel}>Investigation Type</label>
+                                        <input
+                                            value={investigationTypeInput}
+                                            onChange={(e) => setInvestigationTypeInput(e.target.value)}
+                                            placeholder="e.g. ECG"
+                                            style={PatientStyles.smallInput}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label style={PatientStyles.smallLabel}>Description</label>
+                                        <textarea
+                                            value={investigationDescriptionInput}
+                                            onChange={(e) => setInvestigationDescriptionInput(e.target.value)}
+                                            placeholder="Short description..."
+                                            rows={3}
+                                            style={PatientStyles.textarea}
+                                        />
+                                    </div>
+                                    <div style={PatientStyles.formActions}>
+                                        <button
+                                            onClick={() => { setInvestigationTypeInput(''); setInvestigationDescriptionInput(''); setImages([]); }}
+                                            style={PatientStyles.resetButtonSmall}
+                                        >
+                                            Reset
+                                        </button>
+                                        <button
+                                            onClick={handleSubmitInvestigation}
+                                            style={PatientStyles.saveButtonSmall}
+                                        >
+                                            Save
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        <h4 style={styles.marginTop0}>Imaging :</h4>
-                        <p style={styles.pMuted}>A patient's chief complaint is the primary reason</p>
+                        )}
                     </div>
-                    <div style={styles.imageUploaderContainer}>
-                        <ImageUploading multiple value={images} onChange={onChange} maxNumber={maxNumber} dataURLKey="data_url">
-                            {({
-                                imageList,
-                                onImageUpload,
-                                onImageRemoveAll,
-                                onImageUpdate,
-                                onImageRemove,
-                                isDragging,
-                                dragProps
-                            }) => (
-                                <div style={styles.imageUploaderWrapper}>
-                                    {/* single image preview area (show latest image if any) */}
-                                    <div
-                                        style={styles.imagePreviewArea}
-                                        onClick={onImageUpload}
-                                        {...dragProps}
-                                    >
-                                        {imageList.length > 0 ? (
-                                            <img
-                                                src={imageList[imageList.length - 1].data_url}
-                                                alt="preview"
-                                                style={styles.imagePreview}
-                                            />
-                                        ) : (
-                                            <div style={styles.imageDropText}>Click or drop an image here</div>
-                                        )}
-                                    </div>
-                                    {/* thumbnails + actions */}
-                                    <div style={styles.thumbnailContainer}>
-                                        {imageList.map((image, index) => (
-                                            <div
-                                                key={index}
-                                                style={styles.thumbnail}
-                                            >
-                                                <img src={image.data_url} alt="" style={styles.thumbnailImg} />
-                                                <div style={styles.thumbnailActions}>
-                                                    <div style={styles.thumbnailDate}>{new Date().toLocaleDateString()}</div>
-                                                    <div style={styles.thumbnailButtons}>
-                                                        <button
-                                                            onClick={() => onImageUpdate(index)}
-                                                            title="Edit"
-                                                            style={styles.editIconButton}
-                                                        >
-                                                            ✎
-                                                        </button>
-                                                        <button
-                                                            onClick={() => onImageRemove(index)}
-                                                            title="Remove"
-                                                            style={styles.deleteIconButton}
-                                                        >
-                                                            🗑
-                                                        </button>
+                    {getPrescriptionDateTitle(selectedInvestigationDate) === 'Today' && (
+                        <div style={PatientStyles.imageUploaderContainer}>
+                            <ImageUploading multiple value={images} onChange={onChange} maxNumber={maxNumber} dataURLKey="data_url">
+                                {({
+                                    imageList,
+                                    onImageUpload,
+                                    onImageRemoveAll,
+                                    onImageUpdate,
+                                    onImageRemove,
+                                    isDragging,
+                                    dragProps
+                                }) => (
+                                    <div style={PatientStyles.imageUploaderWrapper}>
+                                        {/* single image preview area (show latest image if any) */}
+                                        <div
+                                            style={PatientStyles.imagePreviewArea}
+                                            onClick={onImageUpload}
+                                            {...dragProps}
+                                        >
+                                            {imageList.length > 0 ? (
+                                                <img
+                                                    src={imageList[imageList.length - 1].data_url}
+                                                    alt="preview"
+                                                    style={PatientStyles.imagePreview}
+                                                />
+                                            ) : (
+                                                <div style={PatientStyles.imageDropText}>Click or drop an image here</div>
+                                            )}
+                                        </div>
+                                        {/* thumbnails + actions */}
+                                        <div style={PatientStyles.thumbnailContainer}>
+                                            {imageList.map((image, index) => (
+                                                <div
+                                                    key={index}
+                                                    style={PatientStyles.thumbnail}
+                                                >
+                                                    <img src={image.data_url} alt="" style={PatientStyles.thumbnailImg} />
+                                                    <div style={PatientStyles.thumbnailActions}>
+                                                        <div style={PatientStyles.thumbnailDate}>{new Date().toLocaleDateString()}</div>
+                                                        <div style={PatientStyles.thumbnailButtons}>
+                                                            <button
+                                                                onClick={() => onImageUpdate(index)}
+                                                                title="Edit"
+                                                                style={PatientStyles.editIconButton}
+                                                            >
+                                                                ✎
+                                                            </button>
+                                                            <button
+                                                                onClick={() => onImageRemove(index)}
+                                                                title="Remove"
+                                                                style={PatientStyles.deleteIconButton}
+                                                            >
+                                                                🗑
+                                                            </button>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                    {/* control row */}
-                                    <div style={styles.imageUploaderControls}>
-                                        <button
-                                            onClick={onImageUpload}
-                                            style={{
-                                                ...styles.uploadButton,
-                                                background: isDragging ? '#e6f0ff' : '#fff',
-                                            }}
-                                        >
-                                            Upload
-                                        </button>
+                                            ))}
+                                        </div>
+                                        {/* control row */}
+                                        <div style={PatientStyles.imageUploaderControls}>
+                                            <button
+                                                onClick={onImageUpload}
+                                                style={{
+                                                    ...PatientStyles.uploadButton,
+                                                    background: isDragging ? '#e6f0ff' : '#fff',
+                                                }}
+                                            >
+                                                Upload
+                                            </button>
 
-                                        <button
-                                            onClick={onImageRemoveAll}
-                                            style={styles.removeAllButton}
-                                        >
-                                            Remove all
-                                        </button>
+                                            <button
+                                                onClick={onImageRemoveAll}
+                                                style={PatientStyles.removeAllButton}
+                                            >
+                                                Remove all
+                                            </button>
+                                        </div>
                                     </div>
-                                </div>
-                            )}
-                        </ImageUploading>
-                    </div>
+                                )}
+                            </ImageUploading>
+                        </div>
+                    )}
                 </div>
                 {/* show investigationData entries below imaging area */}
                 {Array.isArray(investigationData) && investigationData.length > 0 ? (
-                    <div style={styles.marginTop20}>
-                        <h3 style={styles.investigationListTitle}>Investigations</h3>
-                        <div style={styles.investigationList}>
+                    <div style={PatientStyles.marginTop20}>
+                        <h3 style={PatientStyles.investigationListTitle}>Investigations</h3>
+                        <div style={PatientStyles.investigationList}>
                             {investigationData.map((item, idx) => (
                                 <div
                                     key={item.id || idx}
-                                    style={styles.investigationItem}
+                                    style={PatientStyles.investigationItem}
                                 >
-                                    <div style={styles.flex1}>
-                                        <div style={styles.investigationItemTitle}>
+                                    <div style={PatientStyles.flex1}>
+                                        <div style={PatientStyles.investigationItemTitle}>
                                             {item.investigationType || 'N/A'}
                                         </div>
-                                        <div style={styles.investigationItemDescription}>{item.description || 'No description'}</div>
-                                        <div style={styles.investigationItemDate}>Date: {item.recordDate || item.record_date || 'N/A'}</div>
+                                        <div style={PatientStyles.investigationItemDescription}>{item.description || 'No description'}</div>
+                                        <div style={PatientStyles.investigationItemDate}>Date: {item.recordDate || item.record_date || 'N/A'}</div>
                                     </div>
 
-                                    <div style={styles.investigationItemImageContainer}>
+                                    <div style={PatientStyles.investigationItemImageContainer}>
                                         {item.report_file_url ? (
                                             <a href={item.report_file_url} target="_blank" rel="noreferrer">
                                                 <img
                                                     src={item.report_file_url}
                                                     alt="report"
-                                                    style={styles.investigationItemImage}
+                                                    style={PatientStyles.investigationItemImage}
                                                 />
                                             </a>
                                         ) : (
-                                            <div style={styles.noFileText}>No file</div>
+                                            <div style={PatientStyles.noFileText}>No file</div>
                                         )}
 
                                         {/* <div style={{ marginTop: 8 }}>
                                                     <button
                                                         onClick={() => alert('Edit investigation: implement edit handler as needed')}
-                                                        style={styles.editInvestigationButton}
+                                                        style={PatientStyles.editInvestigationButton}
                                                     >
                                                         Edit
                                                     </button>
@@ -3340,7 +3371,7 @@ export default function PatientDetail() {
                         </div>
                     </div>
                 ) : (
-                    <div style={styles.noDataText}>No diagnostic investigations found</div>
+                    <div style={PatientStyles.noDataText}>No diagnostic investigations found</div>
                 )}
             </div>
         )
@@ -3352,13 +3383,13 @@ export default function PatientDetail() {
             {/* Patient Header */}
             <div className="main-section">
                 <Header />
-                <div ref={combinedRef} style={styles.relative}>
+                <div ref={combinedRef} style={PatientStyles.relative}>
                     {' '}
                     {/* Combined ref */}
                     {/* <div className="patient-header" style={{ margin: '20px 0', padding: '10px' }}> */}
-                    <div ref={headerRef} className="patient-header" style={styles.patientHeader}>
+                    <div ref={headerRef} className="patient-header" style={PatientStyles.patientHeader}>
                         <div className="patient-contact">
-                            <h1 style={styles.hospitalName}>Doctor Hospital</h1>
+                            <h1 style={PatientStyles.hospitalName}>Doctor Hospital</h1>
                             <p>
                                 {/* <b>Address:</b> */}
                                 {address}
@@ -3372,11 +3403,11 @@ export default function PatientDetail() {
                         </div>
                         <div>
                             <p>Gstin:2748939333030</p>
-                            <img src={Pad} style={styles.headerPadImage} alt="patient" className="patient-avatar" />
+                            <img src={Pad} style={PatientStyles.headerPadImage} alt="patient" className="patient-avatar" />
                         </div>
                     </div>
                     {/* TAB NAV */}
-                    <div style={styles.tabsContainer}>
+                    <div style={PatientStyles.tabsContainer}>
                         {PatientTabListModel.sort((a, b) => a.index - b.index).map((tab) => {
                             const active = activeTab === tab.name;
                             return (
@@ -3384,8 +3415,8 @@ export default function PatientDetail() {
                                     key={tab.name}
                                     onClick={() => setActiveTab(tab.name)}
                                     style={{
-                                        ...styles.tabButton,
-                                        ...(active ? styles.activeTab : styles.inactiveTab),
+                                        ...PatientStyles.tabButton,
+                                        ...(active ? PatientStyles.activeTab : PatientStyles.inactiveTab),
                                         ...(isExportingPDF ? { display: 'none' } : {})
                                     }}
                                 >
@@ -3433,7 +3464,7 @@ export default function PatientDetail() {
                 {activeTab === 'prescription' && ( // This block seems to be duplicated, I will refactor the second one.
                     renderPrescriptionUI()
                 )}
-                {/* <div className="patient-section" style={styles.marginTop140}>
+                {/* <div className="patient-section" style={PatientStyles.marginTop140}>
                     <h3>Add Prescription</h3>
                     <table className="prescription-table">
                         <thead>
@@ -3464,11 +3495,11 @@ export default function PatientDetail() {
                     </table>
                 </div> */}
                 {/* {activeTab === 'prescription' && (
-                    <div className="patient-section" style={styles.marginTop140}>
+                    <div className="patient-section" style={PatientStyles.marginTop140}>
                         <h3>Add Prescriptions</h3>
                         <table
                             className="prescription-table"
-                            style={styles.prescriptionTable}
+                            style={PatientStyles.prescriptionTable}
                         >
                             <thead>
                                 <tr>
@@ -3602,7 +3633,7 @@ export default function PatientDetail() {
                                             )}
                                             {editingIdx === null && (
                                                 <button
-                                                    style={styles.addButton}
+                                                    style={PatientStyles.addButton}
                                                     onClick={handleUpdatePrescription}
                                                 >
                                                     Add
@@ -3660,179 +3691,3 @@ export default function PatientDetail() {
         </div >
     );
 }
-
-const styles = {
-    relative: { position: 'relative' },
-    patientHeader: { margin: '8px 0 18px', padding: '14px 10px' },
-    hospitalName: { color: '#2563eb' },
-    headerPadImage: { marginLeft: '20px' },
-    tabsContainer: { display: 'flex', justifyContent: 'center', gap: 0, margin: '18px 0' },
-    tabButton: { padding: '8px 14px', borderRadius: 0, cursor: 'pointer', display: 'inline-block' },
-    activeTab: { border: 'none', background: '#0a66ff', color: '#fff', boxShadow: '0 2px 6px rgba(10,102,255,0.15)' },
-    inactiveTab: { border: '1px solid #dfe7ff', background: '#fff', color: '#333', boxShadow: 'none' },
-    profileSectionContainer: { display: 'flex', justifyContent: 'center', paddingTop: 6 },
-    profileCard: { position: 'relative', width: 760, background: '#fff', borderRadius: 8, boxShadow: '0 6px 18px rgba(11,45,90,0.06)', padding: 22, border: '1px solid rgba(10,102,255,0.06)' },
-    pdfBtn: { right: 12, top: 12, border: 'none', background: '#0a66ff', color: '#fff', padding: '6px 8px', borderRadius: 4, cursor: 'pointer', boxShadow: '0 2px 6px rgba(10,102,255,0.15)' },
-    profileCardHeader: { display: 'flex', alignItems: 'center', gap: 20 },
-    profileAvatarWrapper: { flex: '0 0 96px', display: 'flex', justifyContent: 'flex-start', alignItems: 'flex-start' },
-    profileAvatar: { width: 96, height: 96, borderRadius: '50%', marginBottom: '100px', border: '4px solid #f3f7ff' },
-    flex1: { flex: 1 },
-    profileNameContainer: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 },
-    patientName: { margin: 0, fontSize: 22, color: '#111', fontWeight: 700 },
-    patientSubDetail: { color: '#7a869a', marginTop: 6, fontSize: 14 },
-    marginTop8: { marginTop: 8 },
-    patientCode: { color: '#0a66ff', fontWeight: 700, fontSize: 13, textDecoration: 'none' },
-    profileHeaderActions: { flex: '0 0 120px', textAlign: 'right' },
-    divider: { border: 'none', borderTop: '2px solid #000000', margin: '16px 0' },
-    contactDetails: { display: 'flex', gap: 30, color: '#444', fontSize: 14 },
-    contactItem: { marginBottom: 8, fontWeight: 400 },
-    inputSmall: { width: 60 },
-    inputExtraSmall: { width: 40 },
-    vitalsSummaryContainer: { display: 'flex', justifyContent: 'center', margin: '24px 0' },
-    vitalsSummaryWrapper: { display: 'flex', gap: 24, flexWrap: 'wrap', width: '100%', maxWidth: 1600 },
-    vitalsSummaryCard: { border: '1px solid #e0e0e0', borderRadius: 8, background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', padding: '16px 24px 24px 24px', minWidth: 320, flex: '1 1 320px', maxWidth: 600 },
-    vitalsSummaryHeader: { justifyContent: 'space-between', marginBottom: 8 },
-    vitalsSummaryTitle: { color: '#1976d2', fontWeight: 600, fontSize: 16 },
-    vitalsSummaryContent: { display: 'flex', justifyContent: 'space-between', gap: 24 },
-    vitalItem: { marginBottom: 8, color: '#333', marginTop: 16 },
-    vitalValue: { color: '#1976d2' },
-    vitalValueBold: { color: '#1976d2', fontWeight: 600 },
-    sectionTitle: { marginTop: 0, marginBottom: 20 },
-    historyTable: { width: '100%', borderCollapse: 'collapse', marginBottom: 20, border: '1px solid #e0e0e0' },
-    tableHeader: { background: '#f5f5f5', borderBottom: '2px solid #ddd' },
-    tableTh: { padding: 12, textAlign: 'left', fontWeight: 600, color: '#333' },
-    tableRow: { borderBottom: '1px solid #e0e0e0' },
-    tableTd: { padding: 12, color: '#333' },
-    actionButtonsContainer: { display: 'flex', gap: 12, justifyContent: 'flex-start' },
-    editButton: { padding: '10px 24px', background: '#fff', border: '2px solid #00bcd4', color: '#00bcd4', borderRadius: 6, cursor: 'pointer', fontWeight: 600, fontSize: 14 },
-    updateButton: { padding: '10px 24px', background: '#0a66ff', border: 'none', color: '#fff', borderRadius: 6, cursor: 'pointer', fontWeight: 600, fontSize: 14 },
-    formGrid3: { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 24, padding: 20, background: '#f9f9f9', borderRadius: 8 },
-    formLabel: { display: 'block', marginBottom: 8, fontWeight: 500, color: '#333', fontSize: 14 },
-    formInput: { width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' },
-    inputWithButton: { display: 'flex', gap: 8, alignItems: 'center' },
-    formSelect: { padding: '10px 12px', border: '1px solid #ddd', borderRadius: 6, fontSize: 14, flex: 1, fontFamily: 'inherit' },
-    addEntryButton: { width: 36, height: 36, borderRadius: '50%', background: '#0a66ff', border: 'none', color: '#fff', cursor: 'pointer', fontSize: 18, fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-    marginBottom24: { marginBottom: 24 },
-    currentEntriesTitle: { marginBottom: 12, color: '#333' },
-    tableThCenter: { padding: 12, textAlign: 'center', fontWeight: 600, color: '#333' },
-    tableTdCenter: { padding: 12, textAlign: 'center' },
-    editTableButton: { padding: '6px 12px', background: '#fff', border: '1px solid #0a66ff', color: '#0a66ff', borderRadius: 4, cursor: 'pointer', marginRight: 8, fontSize: 12, fontWeight: 500 },
-    deleteTableButton: { padding: '6px 12px', background: '#fff', border: '1px solid #f44336', color: '#f44336', borderRadius: 4, cursor: 'pointer', fontSize: 12, fontWeight: 500 },
-    actionButtonsContainerCenter: { display: 'flex', gap: 12, justifyContent: 'center' },
-    cancelButton: { padding: '12px 32px', background: '#fff', border: '1px solid #ddd', color: '#333', borderRadius: 6, cursor: 'pointer', fontWeight: 600, fontSize: 14 },
-    presCancelButton: {
-        background: '#fff',
-        color: '#0070f3',
-        borderRadius: 6,
-        border: '1px solid #0070f3',
-        padding: '8px 12px',
-        minWidth: '80px',
-        textAlign: 'center',
-        fontSize: 14,
-        fontWeight: 500,
-        cursor: 'pointer',
-    },
-    updateButtonLarge: { padding: '12px 32px', background: '#0a66ff', border: 'none', color: '#fff', borderRadius: 6, fontWeight: 600, fontSize: 14 },
-    presEditButton: { padding: '8px 12px', minWidth: '80px', textAlign: 'center', background: '#fff', border: '1px solid #0a66ff', color: '#0a66ff', borderRadius: 6, cursor: 'pointer', marginRight: 8, fontSize: 14, fontWeight: 500 },
-    marginTop140: { marginTop: 140 },
-    prescriptionTable: { width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed', minWidth: 900 },
-    tableCellPadding: { padding: '8px' },
-    inputWithButtonSmall: { display: 'flex', gap: 6 },
-    tableInput: { width: '100%', padding: '8px', boxSizing: 'border-box' },
-    micButton: { height: 24, width: 24, marginTop: 12 },
-    tableSelect: { width: '100%', padding: '8px', boxSizing: 'border-box' },
-    tableCellAction: { padding: '8px', verticalAlign: 'middle', width: 200 },
-    tableCellViewSmall: { width: 44 },
-    tableCellViewMid: { width: 100 },
-    tableCellViewNormal: { width: 160 },
-    cancelEditButton: { background: '#fff', color: '#0070f3', borderRadius: 6, border: '1px solid #0070f3', padding: '8px 14px' },
-    addButton: { background: '#0070f3', color: '#fff', borderRadius: 6, padding: '8px 12px', minWidth: '80px', textAlign: 'center', border: '1px solid #0070f3', cursor: 'pointer', fontSize: 14, fontWeight: 500 },
-    marginTop24: { marginTop: 24 },
-    meetingProcessControls: { display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' },
-    smallLabel: { display: 'block', fontSize: 13, marginBottom: 6 },
-    smallInput: { padding: '8px 10px', borderRadius: 6, border: '1px solid #ccc' },
-    smallSelect: { padding: '8px 10px', borderRadius: 6, border: '1px solid #ccc' },
-    meetingProcessActions: { display: 'flex', alignItems: 'flex-end', gap: 8 },
-    processButton: { color: '#fff', padding: '10px 18px', borderRadius: 6, border: 'none' },
-    resetButton: { background: '#fff', border: '1px solid #dfe7ff', padding: '10px 14px', borderRadius: 6, cursor: 'pointer' },
-    errorText: { color: '#b00020', marginTop: 12 },
-    subSectionTitle: { color: '#1976d2', marginBottom: 8 },
-    list: { paddingLeft: 20 },
-    listItem: { marginBottom: 8 },
-    noDataText: { color: '#888' },
-    summaryTable: { width: '100%', borderCollapse: 'collapse', marginBottom: 12 },
-    summaryTableHeader: { background: '#f5f5f5' },
-    summaryTableTh: { padding: 8, border: '1px solid #e0e0e0' },
-    summaryTableTd: { padding: 8, border: '1px solid #e0e0e0' },
-    marginBottom4: { marginBottom: 4 },
-    noDataFound: { marginTop: 24, color: '#888', textAlign: 'center', fontSize: '1.1rem', padding: '40px 0' },
-    diagnosticSection: { padding: 24, position: 'relative' },
-    diagnosticTitle: { color: '#1e73ff', marginBottom: 12 },
-    searchContainer: { display: 'flex', gap: 16, alignItems: 'center', marginBottom: 20 },
-    searchInput: { flex: 1, borderRadius: 24, padding: '12px 18px', border: '1px solid #d7e3ff', outline: 'none' },
-    diagnosticContent: { display: 'flex', gap: 24, alignItems: 'flex-start' },
-    investigationFormCard: { background: '#fff', padding: 16, borderRadius: 8, border: '1px solid #e6eefc', marginBottom: 12 },
-    marginTop0: { marginTop: 0 },
-    formGrid1: { display: 'grid', gridTemplateColumns: '1fr', gap: 12 },
-    textarea: { width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid #ddd', resize: 'vertical' },
-    formActions: { display: 'flex', gap: 8, justifyContent: 'flex-end' },
-    resetButtonSmall: { background: '#fff', border: '1px solid #f0f0f0', padding: '8px 12px', borderRadius: 6, cursor: 'pointer' },
-    saveButtonSmall: { background: '#0a66ff', color: '#fff', padding: '8px 12px', borderRadius: 6, border: 'none', cursor: 'pointer' },
-    pMuted: { color: '#666', lineHeight: 1.6 },
-    imageUploaderContainer: { width: 220 },
-    imageUploaderWrapper: { display: 'flex', flexDirection: 'column', gap: 12 },
-    imagePreviewArea: { borderRadius: 8, padding: 12, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 140, background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' },
-    imagePreview: { maxWidth: '100%', maxHeight: 160, borderRadius: 6 },
-    imageDropText: { color: '#9aaae6' },
-    thumbnailContainer: { display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' },
-    thumbnail: { width: 120, borderRadius: 8, background: '#fff', boxShadow: '0 2px 6px rgba(0,0,0,0.06)', overflow: 'hidden' },
-    thumbnailImg: { width: '100%', height: 80, objectFit: 'cover' },
-    thumbnailActions: { padding: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
-    thumbnailDate: { fontSize: 12, color: '#777' },
-    thumbnailButtons: { display: 'flex', gap: 8 },
-    editIconButton: { border: 'none', background: 'transparent', cursor: 'pointer', color: '#1e73ff' },
-    deleteIconButton: { border: 'none', background: 'transparent', cursor: 'pointer', color: '#ff4d4f' },
-    imageUploaderControls: { display: 'flex', left: 10, gap: 10, alignItems: 'center' },
-    uploadButton: { border: '1px dashed #cfe0ff', padding: '8px 5px', borderRadius: 8, cursor: 'pointer' },
-    removeAllButton: { background: '#fff', border: '1px solid #f0f0f0', padding: '8px 12px', borderRadius: 8, cursor: 'pointer' },
-    marginTop20: { marginTop: 20 },
-    investigationListTitle: { marginTop: 8, marginBottom: 12, color: '#1e73ff' },
-    investigationList: { display: 'flex', flexDirection: 'column', gap: 12 },
-    investigationItem: { display: 'flex', gap: 12, alignItems: 'flex-start', padding: 12, border: '1px solid #e0e0e0', borderRadius: 8, background: '#fff' },
-    investigationItemTitle: { fontWeight: 700, color: '#111', fontSize: 15 },
-    investigationItemDescription: { color: '#666', marginTop: 6 },
-    investigationItemDate: { marginTop: 8, color: '#444', fontSize: 13 },
-    investigationItemImageContainer: { width: 160, textAlign: 'right' },
-    investigationItemImage: { width: 140, height: 110, objectFit: 'contain', borderRadius: 6, border: '1px solid #f0f0f0' },
-    noFileText: { color: '#999' },
-    datePickerContainer: { marginBottom: 24, display: 'flex', gap: 12, alignItems: 'flex-end' },
-    datePickerWrapper: { flex: 1, maxWidth: 300 },
-    loadingText: { padding: 12, background: '#e3f2fd', borderRadius: 6, color: '#1976d2', marginBottom: 20 },
-    noDataContainer: { padding: 40, textAlign: 'center', background: '#f5f5f5', borderRadius: 8, marginBottom: 20 },
-    symptomsGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24 },
-    marginBottom20: { marginBottom: 20 },
-    symptomLabel: { display: 'block', fontWeight: 600, color: '#333', marginBottom: 4, fontSize: 14 },
-    symptomValue: { margin: 0, padding: '10px 0', color: '#666', lineHeight: 1.6 },
-    centerContent: { alignContent: 'center', justifyContent: 'center' },
-    noDataLabel: { textAlign: 'center', color: '#555', fontStyle: 'italic', width: '100%', display: 'block', marginTop: 20 },
-    prescriptionTableWrapper: {
-        maxHeight: '400px', // Set a max height for scrolling
-        overflowY: 'auto', // Enable vertical scrolling
-        border: '1px solid #e0e0e0', // Optional: add a border to the scrolling area
-        borderRadius: 8,
-        marginBottom: 20,
-        background: '#fff',
-    },
-    stickyTableHeader: { position: 'sticky', top: 0, backgroundColor: '#f5f5f5', zIndex: 1, padding: '12px', textAlign: 'left', fontWeight: 600, color: '#333' },
-    addPrescriptionButton: { background: '#0070f3', color: '#fff', borderRadius: 6, padding: '8px 14px', border: 'none', cursor: 'pointer' },
-    removeTableButton: { background: '#fff', color: '#f44336', borderRadius: 6, padding: '8px 12px', minWidth: '80px', textAlign: 'center', border: '1px solid #f44336', cursor: 'pointer', fontSize: 14, fontWeight: 500 },
-    updatePrescriptionButton: {
-        borderRadius: 6,
-        color: '#fff',
-        padding: '8px 12px',
-        minWidth: '80px',
-        textAlign: 'center',
-        fontSize: 14,
-        fontWeight: 500,
-    },
-};
