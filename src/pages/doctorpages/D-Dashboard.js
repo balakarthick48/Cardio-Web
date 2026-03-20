@@ -384,7 +384,7 @@ const Doctordashboard = () => {
         return rangeWithDots;
     }
     // Mock data
-    const stats = [
+const stats = [
         {
             title: "Today's Patients",
             value: dashboardData ? dashboardData.today_patients : 0,
@@ -395,7 +395,18 @@ const Doctordashboard = () => {
             value: dashboardData ? dashboardData.upcoming_appointments : 0,
             icon: <img src={Icon} alt="icon" style={{ width: 28, height: 28 }} />
         },
-        { title: 'Total Consults', value:dashboardData ? dashboardData.total_consults : 0, icon: <img src={Icon3} alt="icon" style={{ width: 28, height: 28 }} /> }
+        { title: 'Total Consults', value:dashboardData ? dashboardData.total_consults : 0, icon: <img src={Icon3} alt="icon" style={{ width: 28, height: 28 }} /> },
+        {
+            title: "Video Call Count",
+            value: dashboardData ? dashboardData.today_patients : 0,
+            icon: <img src={Icon1} alt="icon" style={{ width: 28, height: 28 }} />
+        },
+        {
+            title: 'In-Person Count',
+            value: dashboardData ? dashboardData.upcoming_appointments : 0,
+            icon: <img src={Icon} alt="icon" style={{ width: 28, height: 28 }} />
+        },
+        { title: 'Emergency Count', value:dashboardData ? dashboardData.total_consults : 0, icon: <img src={Icon3} alt="icon" style={{ width: 28, height: 28 }} /> }
     ];
 
     useEffect(() => {
@@ -451,7 +462,11 @@ const Doctordashboard = () => {
                                 {upcomingAppointment[0]?.patientName} <span className="appointment-id"></span>
                             </h3>
                         </div>
-
+                        <div className="appointment-status">
+                            <button className="action-btn" onClick={() => handlePackageTypeClick(upcomingAppointment[0])}>
+                                {upcomingAppointment[0]?.packageType}
+                            </button>
+                        </div>
                         <div className="appointment-status">
                             <span className="status">Ongoing</span>
                         </div>
@@ -562,7 +577,7 @@ const Doctordashboard = () => {
                 }}>
                     {/* Filter Type Toggle */}
                     <div style={{ display: 'flex', gap: '8px' }}>
-                        {/* <button
+                        <button
                             onClick={() => {
                                 setFilterType('daily');
                                 setSelectedDate(getTodayDate());
@@ -580,7 +595,7 @@ const Doctordashboard = () => {
                             }}
                         >
                             Daily
-                        </button> */}
+                        </button>
                         <button
                             onClick={() => {
                                 setFilterType('monthly');
