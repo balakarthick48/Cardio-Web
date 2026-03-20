@@ -126,6 +126,8 @@ export default function PatientDetail() {
     const [investigationTypeInput, setInvestigationTypeInput] = useState('');
     const [investigationDescriptionInput, setInvestigationDescriptionInput] = useState('');
 
+    const [todaysAppointment, setTodaysAppointment] = useState(null)
+
     const handleSubmitInvestigation = () => {
         const payload = {
             investigationType: investigationTypeInput,
@@ -940,6 +942,49 @@ export default function PatientDetail() {
         setLoading(false);
     };
 
+    const getAppointmentBy = async (patientId) => {
+        setLoading(true);
+        setError('');
+        try {
+            // let url = `${API_BASE_URL}doctor/getappointments`; //allapointment
+            let url = `${API_BASE_URL}patient/getappointments?patientId=${patientId}`;
+            console.log('Fetching:', url);
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            console.log('Response status:', response.status);
+            const data = await response.json();
+            console.log('appointment...:', data);
+            if (response.ok && data.data) {
+                const appointments = Array.isArray(data.data) ? data.data : []
+                const todaysAppointmentForPatient = appointments.find((item) => item.slotDate === getTodayDate());
+                if (todaysAppointmentForPatient) {
+                    const appointmentId = todaysAppointmentForPatient.appointmentId;
+                    if (appointmentId) {
+                        setTodaysAppointment(appointmentId);
+                    }
+                    console.log("Todays appointment id is", appointmentId);
+                } else {
+                    console.log("No appointment for today for this patient.");
+                }
+            } else {
+                console.log("Todays appointment id Error")
+                setError(data.message || 'Failed to fetch patients detail');
+            }
+            getPrescriptions();
+            getPatients();
+            getfamilyHistory();
+            getVitalSignsData();
+            // insertSymptoms(); // This function is for updating/inserting, not for initial data fetch
+            getSymptomsData()
+            getInvestigationData();
+
+        } catch (err) {
+            setError('Network erroaa');
+        }
+    };
+
     const setupDefaultVitalForToday = (sortedVitals) => {
         const todayVital = {
             patientId: patientId,
@@ -1004,9 +1049,9 @@ export default function PatientDetail() {
                 setGroupedSymptoms(grouped);
                 let todaysItem = grouped[dates[0]]
                 let nextDay = grouped[dates[1]]
-                if (todaysItem[0].next_visit_date !== undefined && todaysItem[0].next_visit_date !== null) {
+                if (todaysItem && todaysItem[0].next_visit_date !== undefined && todaysItem[0].next_visit_date !== null) {
                     setGeneralNextVisitDate(todaysItem[0].next_visit_date);
-                } else if (nextDay[0].next_visit_date !== undefined && nextDay[0].next_visit_date !== null) {
+                } else if (nextDay && nextDay[0].next_visit_date !== undefined && nextDay[0].next_visit_date !== null) {
                     setGeneralNextVisitDate(nextDay[0].next_visit_date);
                 } else {
                     setGeneralNextVisitDate('');
@@ -1732,13 +1777,7 @@ export default function PatientDetail() {
             return; // Guard clause to prevent fetching data without a patientId.
         }
 
-        getPrescriptions();
-        getPatients();
-        getfamilyHistory();
-        getVitalSignsData();
-        // insertSymptoms(); // This function is for updating/inserting, not for initial data fetch
-        getSymptomsData()
-        getInvestigationData();
+        getAppointmentBy(patientId)
         // The dependency array intentionally omits the getter functions.
         // This is because they are redefined on every render, and including them
         // would cause an infinite loop. We only want to refetch when patientId changes.

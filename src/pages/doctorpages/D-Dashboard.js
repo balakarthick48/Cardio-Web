@@ -268,42 +268,42 @@ const Doctordashboard = () => {
         setLoading(false);
     };
 
-        const getTotalAppointment = async (month, year) => {
-            setLoading(true);
-            setError('');
-            try {
-                // Ensure month is 2-digit string
-                let monthStr = month;
-                let yearStr = year;
-                if (month && typeof month === 'string' && month.includes('-')) {
-                    // If month is in YYYY-MM format
-                    const parts = month.split('-');
-                    yearStr = parts[0];
-                    monthStr = parts[1];
-                }
-                if (monthStr && monthStr.length === 1) monthStr = '0' + monthStr;
-                let url = `${API_BASE_URL}patient/appointments/date_month?month=${monthStr || ''}&year=${yearStr || ''}`;
-                console.log('Fetchingtotal:', url);
-                const response = await fetch(url, {
-                    method: 'GET',
-                    headers: { 'Content-Type': 'application/json' }
-                });
-                console.log('Response status:', response.status);
-                const data = await response.json();
-                console.log('appointment...total:', data);
-                if (response.ok) {
-                    setTotalAppointment(Array.isArray(data.data) ? data.data : []);
-                } else {
-                    setError(data.message || 'Failed to fetch patients detail');
-                }
-            } catch (err) {
-                setError('Network erroaa');
+    const getTotalAppointment = async (month, year) => {
+        setLoading(true);
+        setError('');
+        try {
+            // Ensure month is 2-digit string
+            let monthStr = month;
+            let yearStr = year;
+            if (month && typeof month === 'string' && month.includes('-')) {
+                // If month is in YYYY-MM format
+                const parts = month.split('-');
+                yearStr = parts[0];
+                monthStr = parts[1];
             }
-            setLoading(false);
-        };
+            if (monthStr && monthStr.length === 1) monthStr = '0' + monthStr;
+            let url = `${API_BASE_URL}patient/appointments/date_month?month=${monthStr || ''}&year=${yearStr || ''}`;
+            console.log('Fetchingtotal:', url);
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            console.log('Response status:', response.status);
+            const data = await response.json();
+            console.log('appointment...total:', data);
+            if (response.ok) {
+                setTotalAppointment(Array.isArray(data.data) ? data.data : []);
+            } else {
+                setError(data.message || 'Failed to fetch patients detail');
+            }
+        } catch (err) {
+            setError('Network erroaa');
+        }
+        setLoading(false);
+    };
 
-                const getDashboardData = async () => {
-            setLoading(true);
+    const getDashboardData = async () => {
+        setLoading(true);
         setError('');
         try {
             // Extract month and year from selectedMonth (format: 'YYYY-MM')
@@ -319,25 +319,25 @@ const Doctordashboard = () => {
                 year = now.getFullYear().toString();
                 month = String(now.getMonth() + 1).padStart(2, '0');
             }
-                let url = `${API_BASE_URL}patient/dashboard/monthly-counts?month=${month}&year=${year}`;
-                console.log('Fetchingdashboard:', url);
-                const response = await fetch(url, {
-                    method: 'GET',
-                    headers: { 'Content-Type': 'application/json' }
-                });
-                console.log('Response status:', response.status);
-                const data = await response.json();
-                console.log('dashboard data:', data);
-                if (response.ok) {
-                    setDashboardData(data.data);
-                } else {
-                    setError(data.message || 'Failed to fetch dashboard data');
-                }
-            } catch (err) {
-                setError('Network erroaa');
+            let url = `${API_BASE_URL}patient/dashboard/monthly-counts?month=${month}&year=${year}`;
+            console.log('Fetchingdashboard:', url);
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            console.log('Response status:', response.status);
+            const data = await response.json();
+            console.log('dashboard data:', data);
+            if (response.ok) {
+                setDashboardData(data.data);
+            } else {
+                setError(data.message || 'Failed to fetch dashboard data');
             }
-            setLoading(false);
-        };
+        } catch (err) {
+            setError('Network erroaa');
+        }
+        setLoading(false);
+    };
 
     const handlePackageTypeClick = (appointment) => {
         if (appointment?.packageType === 'video call' && appointment?.zoomMeetingUrl) {
@@ -395,7 +395,7 @@ const Doctordashboard = () => {
             value: dashboardData ? dashboardData.upcoming_appointments : 0,
             icon: <img src={Icon} alt="icon" style={{ width: 28, height: 28 }} />
         },
-        { title: 'Total Consults', value:dashboardData ? dashboardData.total_consults : 0, icon: <img src={Icon3} alt="icon" style={{ width: 28, height: 28 }} /> }
+        { title: 'Total Consults', value: dashboardData ? dashboardData.total_consults : 0, icon: <img src={Icon3} alt="icon" style={{ width: 28, height: 28 }} /> }
     ];
 
     useEffect(() => {
@@ -426,13 +426,13 @@ const Doctordashboard = () => {
     //         getDashboardData();
     //     }
     // }, [selectedMonth, filterType]);
-        console.log('dashboardData:', dashboardData);
+    console.log('dashboardData:', dashboardData);
 
-        useEffect(() => {
-            if (filterType === 'monthly' && selectedMonth) {
-                getDashboardData();
-            }
-        }, [selectedMonth, filterType]);
+    useEffect(() => {
+        if (filterType === 'monthly' && selectedMonth) {
+            getDashboardData();
+        }
+    }, [selectedMonth, filterType]);
     console.log('!!!!!:', emergencyAppointment);
     console.log('upcoming...:', upcomingAppointment);
     console.log('Filter Type///:', filterType, 'Selected Date:', selectedDate, 'Selected Month:', selectedMonth);
