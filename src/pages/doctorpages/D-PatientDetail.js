@@ -21,7 +21,7 @@ const PatientTabListModel = [
     { index: 1, name: 'vital', displayTitle: 'Vital Signs' },
     { index: 2, name: 'family history', displayTitle: 'Family Medical History' },
     { index: 3, name: 'prescription', displayTitle: 'Prescription' },
-    { index: 4, name: 'present', displayTitle: 'Present Symptoms' },
+    { index: 4, name: 'present', displayTitle: 'Symptoms' },
     { index: 5, name: 'meeting process', displayTitle: 'Meeting Process' },
     { index: 6, name: 'diagnostic', displayTitle: 'Diagnostic Investigation' },
     { index: 7, name: 'next meetup', displayTitle: 'Next Meetup' },
@@ -65,6 +65,7 @@ export default function PatientDetail() {
     const [prescriptionToDelete, setPrescriptionToDelete] = useState(null); // store index
 
     const [groupedInvestigations, setGroupedInvestigations] = useState({});
+    const [groupedSymptoms, setGroupedSymptoms] = useState({});
     const [selectedInvestigationDate, setSelectedInvestigationDate] = useState(null);
 
     const [vitalSignsData, setVitalSignsData] = useState([]);
@@ -96,8 +97,8 @@ export default function PatientDetail() {
     const [editingFamilyIdx, setEditingFamilyIdx] = useState(null);
     // const [listening, setListening] = useState(false);
 
-    // Present Symptoms state
-    const [selectedDate, setSelectedDate] = useState('');
+    // Present Symptoms state    
+    const [selectedSymptomDate, setSelectedSymptomDate] = useState('');
     const [symptomsData, setSymptomsData] = useState(null);
     const [isEditingSymptoms, setIsEditingSymptoms] = useState(false);
     const [symptomsFormData, setSymptomsFormData] = useState({
@@ -118,6 +119,8 @@ export default function PatientDetail() {
         recordDate: '',
         report_file_url: ''
     });
+
+    const [generalNextVisitDate, setGeneralNextVisitDate] = useState('');
 
     // Local inputs for new investigation entry
     const [investigationTypeInput, setInvestigationTypeInput] = useState('');
@@ -240,6 +243,24 @@ export default function PatientDetail() {
 
         return labels.length ? labels.join(', ') : '-';
     };
+
+    const handleSymptomDateChange = (date) => {
+        setSelectedSymptomDate(date);
+        const symptomsForDate = groupedSymptoms[date] || [];
+        setSymptomsData(symptomsForDate[0]);
+        if (symptomsForDate.length > 0) {
+            const firstSymptom = symptomsForDate[0];
+            setSymptomsFormData({
+                appoinment_id: firstSymptom.appoinment_id || '',
+                chiefComplaint: firstSymptom.chief_complaint || '',
+                onsetDurationSeverity: firstSymptom.onset_duration_severity || '',
+                associatedSymptoms: firstSymptom.associated_symptoms || '',
+                consultingDoctor: firstSymptom.consulting_doctor || '',
+                aggravatingRelievingFactor: firstSymptom.aggravating_relief_factor || '',
+                nextVisitDate: firstSymptom.next_visit_date || ''
+            });
+        }
+    }
 
     const exportHeaderAndSection = async (sectionRef, filename = 'section.pdf') => {
         setIsExportingPDF(true);
@@ -949,54 +970,81 @@ export default function PatientDetail() {
         });
     }
     // Get symptoms data from API
-    const getSymptomsData = async (date) => {
-        if (!date) {
-            setSymptomsData(null);
-            return;
-        }
-
+    const getSymptomsData = async () => {
         setLoading(true);
         setError('');
         try {
-            let url = `${API_BASE_URL}patient/symptoms-get?patientId=${patientId}&date=${date}`;
+            let url = `${API_BASE_URL}patient/symptoms-get?patientId=${patientId}`;
             console.log('symptoms url:', url);
             const response = await fetch(url, {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' }
             });
-            console.log('symptoms Response status:', response.status);
             const data = await response.json();
             console.log('symptoms response:', data);
-            //     if (response.ok && data) {
-            //     console.log('<<<<<<>>>>//', response);    
-            //     setSymptomsData(data);
-            //     console.log('symptdataaa', data);
-            //                 } else {
-            //     setSymptomsData(null);
-            // }
             if (response.ok && data.data) {
-                setSymptomsData(data.data);
-                setSymptomsFormData({
-                    chiefComplaint: data.data[0].chief_complaint || '',
-                    onsetDurationSeverity: data.data[0].onset_duration_severity || '',
-                    associatedSymptoms: data.data[0].associated_symptoms || '',
-                    consultingDoctor: data.data[0].consulting_doctor || '',
-                    aggravatingRelievingFactor: data.data[0].aggravating_relief_factor || '',
-                    nextVisitDate: data.data[0].next_visit_date || ''
-                });
-                console.log('<<<<<<>>>>//', symptomsData);
+                const symptoms = data.data;
+                const grouped = symptoms.reduce((acc, item) => {
+                    const date = (item.created_at || '').split('T')[0];
+                    if (date) {
+                        if (!acc[date]) {
+                            acc[date] = [];
+                        }
+                        acc[date].push(item);
+                    }
+                    return acc;
+                }, {});
 
+                const today = getTodayDate();
+                if (!grouped[today]) {
+                    grouped[today] = [{ created_at: getTodayDate() }];
+                }
+
+                const dates = Object.keys(grouped).sort().reverse();
+                setGroupedSymptoms(grouped);
+                let todaysItem = grouped[dates[0]]
+                let nextDay = grouped[dates[1]]
+                if (todaysItem[0].next_visit_date !== undefined && todaysItem[0].next_visit_date !== null) {
+                    setGeneralNextVisitDate(todaysItem[0].next_visit_date);
+                } else if (nextDay[0].next_visit_date !== undefined && nextDay[0].next_visit_date !== null) {
+                    setGeneralNextVisitDate(nextDay[0].next_visit_date);
+                } else {
+                    setGeneralNextVisitDate('');
+                }
+
+                const dateToDisplay = selectedSymptomDate || today;
+
+                if (!selectedSymptomDate) {
+                    setSelectedSymptomDate(dateToDisplay);
+                }
+
+                const symptomsForDate = grouped[dateToDisplay] || [];
+                setSymptomsData(symptomsForDate[0]);
+
+                if (symptomsForDate.length > 0) {
+                    const firstSymptom = symptomsForDate[0];
+                    setSymptomsFormData({
+                        chiefComplaint: firstSymptom.chief_complaint || '',
+                        onsetDurationSeverity: firstSymptom.onset_duration_severity || '',
+                        associatedSymptoms: firstSymptom.associated_symptoms || '',
+                        consultingDoctor: firstSymptom.consulting_doctor || '',
+                        aggravatingRelievingFactor: firstSymptom.aggravating_relief_factor || '',
+                        nextVisitDate: firstSymptom.next_visit_date || ''
+                    });
+                } else {
+                    setSymptomsFormData({
+                        chiefComplaint: '', onsetDurationSeverity: '', associatedSymptoms: '',
+                        consultingDoctor: '', aggravatingRelievingFactor: '', nextVisitDate: ''
+                    });
+                }
                 setIsEditingSymptoms(false);
+
             } else {
+                const today = getTodayDate();
+                setGroupedSymptoms({ [today]: [] });
+                setSelectedSymptomDate(today);
                 setSymptomsData(null);
-                setSymptomsFormData({
-                    chiefComplaint: '',
-                    onsetDurationSeverity: '',
-                    associatedSymptoms: '',
-                    consultingDoctor: '',
-                    aggravatingRelievingFactor: '',
-                    nextVisitDate: ''
-                });
+                setSymptomsFormData({ chiefComplaint: '', onsetDurationSeverity: '', associatedSymptoms: '', consultingDoctor: '', aggravatingRelievingFactor: '', nextVisitDate: '' });
             }
         } catch (err) {
             console.error('Error fetching symptoms:', err);
@@ -1012,8 +1060,7 @@ export default function PatientDetail() {
 
         try {
             const body = {
-                // appoinment_id: symptomsData[0].appointment_id || 0, 
-                appoinment_id: '',
+                appoinment_id: symptomsFormData.appoinment_id,
                 patient_id: Number(patientId),
                 chief_complaint: symptomsFormData.chiefComplaint || '',
                 onset_duration_severity: symptomsFormData.onsetDurationSeverity || '',
@@ -1690,6 +1737,7 @@ export default function PatientDetail() {
         getfamilyHistory();
         getVitalSignsData();
         // insertSymptoms(); // This function is for updating/inserting, not for initial data fetch
+        getSymptomsData()
         getInvestigationData();
         // The dependency array intentionally omits the getter functions.
         // This is because they are redefined on every render, and including them
@@ -2657,25 +2705,25 @@ export default function PatientDetail() {
     const renderPresentUI = () => {
         return (
             <div className="patient-section" ref={presentRef} style={PatientStyles.relative}>
-                {headerTable('Download Present Symptoms as PDF', presentRef, 'PresentSymptoms.pdf', 'Present Symptoms')}
-                {/* Date Picker */}
-                <div style={PatientStyles.datePickerContainer}>
-                    <div style={PatientStyles.datePickerWrapper}>
-                        <label style={PatientStyles.formLabel}>
-                            Select Date
-                        </label>
-                        <input
-                            type="date"
-                            value={selectedDate}
-                            onChange={(e) => {
-                                setSelectedDate(e.target.value);
-                                getSymptomsData(e.target.value);
-                            }}
-                            style={PatientStyles.formInput}
-                        />
+                {/*Date horizontal scroll */}
+                <div className="patient-section" ref={presentRef} style={PatientStyles.relative}>
+                    <div style={{ ...PatientStyles.tabsContainer, height: 32, justifyContent: 'flex-start', gap: 12 }}>
+                        {Object.keys(groupedSymptoms).sort((a, b) => new Date(b) - new Date(a)).map((date, idx) => (
+                            <div key={date} style={{ display: 'flex', alignItems: 'center' }}>
+                                <button
+                                    style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 0 }}
+                                    onClick={() => handleSymptomDateChange(date)}
+                                >
+                                    <h4 style={{
+                                        color: selectedSymptomDate === date ? '#000000' : '#8C8C8C',
+                                        fontSize: 16, fontWeight: selectedSymptomDate === date ? 'bold' : 'normal', textAlign: 'left', margin: 0
+                                    }}>{getPrescriptionDateTitle(date)}</h4>
+                                </button>
+                            </div>
+                        ))}
                     </div>
                 </div>
-
+                {headerTable('Download Present Symptoms as PDF', presentRef, 'PresentSymptoms.pdf', 'Present Symptoms')}
                 {/* Loading State */}
                 {loading && <div style={PatientStyles.loadingText}>Loading symptoms data...</div>}
 
@@ -2683,7 +2731,7 @@ export default function PatientDetail() {
                 {/* {error && <div style={{ padding: 12, background: '#ffebee', borderRadius: 6, color: '#c62828', marginBottom: 20 }}>{error}</div>} */}
 
                 {/* No Data State */}
-                {selectedDate && !symptomsData && !loading && (
+                {(!symptomsData) && !loading && (
                     <div style={PatientStyles.noDataContainer}>
                         <p style={PatientStyles.noDataText}>No symptoms data available for the selected date</p>
                     </div>
@@ -2691,28 +2739,28 @@ export default function PatientDetail() {
 
                 {/* View Mode - Display symptoms data */}
                 {symptomsData && !isEditingSymptoms && (
-                    <>
+                    <div style={{ border: '1px solid #eee', borderRadius: 8, padding: 16, marginBottom: 16, background: '#fff' }}>
                         <div style={PatientStyles.symptomsGrid}>
                             {/* Left Column */}
                             <div>
                                 <div style={PatientStyles.marginBottom20}>
                                     <label style={PatientStyles.symptomLabel}>Chief Complaint</label>
                                     <p style={PatientStyles.symptomValue}>
-                                        {symptomsData[0].chief_complaint || 'N/A'}
+                                        {symptomsData.chief_complaint || 'N/A'}
                                     </p>
                                 </div>
 
                                 <div style={PatientStyles.marginBottom20}>
                                     <label style={PatientStyles.symptomLabel}>Onset, Duration, Severity</label>
                                     <p style={PatientStyles.symptomValue}>
-                                        {symptomsData[0].onset_duration_severity || 'N/A'}
+                                        {symptomsData.onset_duration_severity || 'N/A'}
                                     </p>
                                 </div>
 
                                 <div style={PatientStyles.marginBottom20}>
                                     <label style={PatientStyles.symptomLabel}>Associated Symptoms</label>
                                     <p style={PatientStyles.symptomValue}>
-                                        {symptomsData[0].associated_symptoms || 'N/A'}
+                                        {symptomsData.associated_symptoms || 'N/A'}
                                     </p>
                                 </div>
                             </div>
@@ -2722,26 +2770,29 @@ export default function PatientDetail() {
                                 <div style={PatientStyles.marginBottom20}>
                                     <label style={PatientStyles.symptomLabel}>Consulting Doctor</label>
                                     <p style={PatientStyles.symptomValue}>
-                                        {symptomsData[0].consulting_doctor || 'N/A'}
+                                        {symptomsData.consulting_doctor || 'N/A'}
                                     </p>
                                 </div>
 
                                 <div style={PatientStyles.marginBottom20}>
                                     <label style={PatientStyles.symptomLabel}>Aggravating / Relieving Factor</label>
                                     <p style={PatientStyles.symptomValue}>
-                                        {symptomsData[0].aggravating_relief_factor || 'N/A'}
+                                        {symptomsData.aggravating_relief_factor || 'N/A'}
                                     </p>
                                 </div>
 
                                 <div style={PatientStyles.marginBottom20}>
                                     <label style={PatientStyles.symptomLabel}>Next visit Date</label>
                                     <p style={PatientStyles.symptomValue}>
-                                        {symptomsData[0].next_visit_date || 'N/A'}
+                                        {symptomsData.next_visit_date || 'N/A'}
                                     </p>
                                 </div>
                             </div>
                         </div>
-
+                    </div>
+                )}
+                {symptomsData && !isEditingSymptoms && symptomsData.created_at === getTodayDate() && (
+                    <div style={PatientStyles.actionButtonsContainer}>
                         <div style={PatientStyles.actionButtonsContainer}>
                             <button
                                 onClick={() => setIsEditingSymptoms(true)}
@@ -2750,11 +2801,11 @@ export default function PatientDetail() {
                                 Edit
                             </button>
                         </div>
-                    </>
+                    </div>
                 )}
 
                 {/* Edit Mode - Edit symptoms data */}
-                {symptomsData && isEditingSymptoms && (
+                {isEditingSymptoms && (
                     <>
                         <div style={{
                             display: 'grid',
@@ -2998,6 +3049,20 @@ export default function PatientDetail() {
         )
     }
 
+    const renderNextMeetupUI = () => {
+        return (
+            <div className="patient-section" style={PatientStyles.marginTop24}>
+                <h3>Next Meetup</h3>
+                <div style={PatientStyles.nextMeetupContainer}>
+                    <div style={{ display: 'flex', gap: 16 }}>
+                        <label style={PatientStyles.nextMeetup}>Next Visit Date:</label>
+                        <label style={PatientStyles.nextMeetupDate}>{generalNextVisitDate === '' ? 'No Next visit time set' : generalNextVisitDate}</label>
+                    </div>
+                </div>
+            </div>
+        )
+    }
+
     const renderMeetingProcessUI = () => {
         return (
             <div className="patient-section" style={PatientStyles.marginTop24}>
@@ -3034,30 +3099,30 @@ export default function PatientDetail() {
                             <option value="ta">ta</option>
                         </select>
                     </div>
-                    <div style={PatientStyles.meetingProcessActions}>
-                        <button
-                            onClick={getMeetingProcess}
-                            disabled={loading}
-                            style={{
-                                ...PatientStyles.processButton,
-                                background: loading ? '#ccc' : '#0a66ff',
-                                cursor: loading ? 'not-allowed' : 'pointer',
-                            }}
-                        >
-                            {loading ? 'Processing...' : 'Process'}
-                        </button>
-                        <button
-                            onClick={() => {
-                                setMeetingIdInput('');
-                                setPatientIdInput('');
-                                setLanguageOption('en');
-                                setError('');
-                            }}
-                            style={PatientStyles.resetButton}
-                        >
-                            Reset
-                        </button>
-                    </div>
+                </div>
+                <div style={PatientStyles.meetingProcessActions}>
+                    <button
+                        onClick={getMeetingProcess}
+                        disabled={loading}
+                        style={{
+                            ...PatientStyles.processButton,
+                            background: loading ? '#ccc' : '#0a66ff',
+                            cursor: loading ? 'not-allowed' : 'pointer',
+                        }}
+                    >
+                        {loading ? 'Processing...' : 'Process'}
+                    </button>
+                    <button
+                        onClick={() => {
+                            setMeetingIdInput('');
+                            setPatientIdInput('');
+                            setLanguageOption('en');
+                            setError('');
+                        }}
+                        style={PatientStyles.resetButton}
+                    >
+                        Reset
+                    </button>
                 </div>
 
                 {error && <div style={PatientStyles.errorText}>{error}</div>}
@@ -3655,6 +3720,10 @@ export default function PatientDetail() {
                 )}
                 {activeTab === 'present' && (
                     renderPresentUI()
+                )}
+
+                {activeTab === 'next meetup' && (
+                    renderNextMeetupUI()
                 )}
 
             </div>

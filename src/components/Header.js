@@ -24,8 +24,8 @@ const Header = ({ onUserAvatarClick, onAvatarClick }) => {
 
     // console.log('User Name:', userName);
     // console.log('Selected Title:', localStorage.getItem('resetEmail'));
-  const userName = localStorage.getItem('userName') || localStorage.getItem('email') || localStorage.getItem('resetEmail') || "User";
-    return (  
+    const userName = localStorage.getItem('userName') || localStorage.getItem('email') || localStorage.getItem('resetEmail') || "User";
+    return (
         <header className="app-header">
             {/* Left Title */}
             <h2 className="header-title">{selectedTitle}</h2>

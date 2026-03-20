@@ -109,6 +109,7 @@ const styles = {
         border: '1px solid #ccc',
         borderRadius: '5px',
         marginLeft: 0,
+        width: '250px',
     },
 };
 
