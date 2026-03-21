@@ -5,10 +5,18 @@ const SpeechToTextModal = ({ isOpen, onClose, onTranscript, fieldName }) => {
     const [listening, setListening] = useState(false);
     const [transcript, setTranscript] = useState('');
     const recognitionRef = useRef(null);
+    const silenceTimerRef = useRef(null);
+
+    const stopListening = useCallback(() => {
+        if (recognitionRef.current) {
+            recognitionRef.current.stop();
+        }
+    }, []);
 
     useEffect(() => {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!SpeechRecognition) {
+            toast.warn('Speech Recognition is not supported by this browser.');
             return;
         }
 
@@ -17,26 +25,39 @@ const SpeechToTextModal = ({ isOpen, onClose, onTranscript, fieldName }) => {
         recognition.lang = 'en-US';
         recognition.interimResults = true;
 
+        const resetSilenceTimer = () => {
+            clearTimeout(silenceTimerRef.current);
+            silenceTimerRef.current = setTimeout(() => {
+                stopListening();
+            }, 3000); // 3 seconds of silence
+        };
+
         recognition.onstart = () => {
             setListening(true);
+            resetSilenceTimer();
         };
 
         recognition.onend = () => {
             setListening(false);
+            clearTimeout(silenceTimerRef.current);
         };
 
         recognition.onresult = (event) => {
-            let finalTranscript = '';
-            for (let i = event.resultIndex; i < event.results.length; ++i) {
-                if (event.results[i].isFinal) {
-                    finalTranscript += event.results[i][0].transcript;
-                }
-            }
-            setTranscript(prev => prev + finalTranscript);
+            resetSilenceTimer();
+            // This is a more robust way to handle continuous transcription
+            // by rebuilding the full transcript from the results array.
+            const fullTranscript = Array.from(event.results)
+                .map((result) => result[0])
+                .map((result) => result.transcript)
+                .join('');
+            setTranscript(fullTranscript);
         };
         
         recognition.onerror = (event) => {
-            toast.error(`Speech recognition error: ${event.error}`);
+            // 'no-speech' and 'aborted' are common events that don't need to be shown as errors.
+            if (event.error !== 'no-speech' && event.error !== 'aborted') {
+                toast.error(`Speech recognition error: ${event.error}`);
+            }
             console.error('Speech recognition error', event);
         };
 
@@ -44,31 +65,30 @@ const SpeechToTextModal = ({ isOpen, onClose, onTranscript, fieldName }) => {
 
         return () => {
             if (recognitionRef.current) {
-                recognitionRef.current.stop();
+                // abort() is more immediate than stop() for cleanup.
+                recognitionRef.current.abort();
             }
+            clearTimeout(silenceTimerRef.current);
         };
-    }, []);
+    }, [stopListening]);
 
     const startListening = useCallback(() => {
-        if (recognitionRef.current && !listening) {
+        if (recognitionRef.current) {
             try {
+                setTranscript(''); // Reset transcript on new start
                 recognitionRef.current.start();
             } catch (e) {
-                console.error("Speech recognition couldn't be started.", e);
-                toast.error("Speech recognition could not be started. Please check browser permissions.");
+                // This error is thrown if recognition is already active. We can safely ignore it.
+                if (e.name !== 'InvalidStateError') {
+                    console.error("Speech recognition couldn't be started.", e);
+                    toast.error("Speech recognition could not be started. Please check browser permissions.");
+                }
             }
         }
-    }, [listening]);
-
-    const stopListening = useCallback(() => {
-        if (recognitionRef.current && listening) {
-            recognitionRef.current.stop();
-        }
-    }, [listening]);
+    }, []); // Empty dependency array makes this callback stable
 
     useEffect(() => {
         if (isOpen) {
-            setTranscript(''); // Reset transcript when modal opens
             startListening();
         } else {
             stopListening();
@@ -79,16 +99,14 @@ const SpeechToTextModal = ({ isOpen, onClose, onTranscript, fieldName }) => {
         if (listening) {
             stopListening();
         } else {
-            setTranscript('');
-            // A small delay to allow the recognition to stop before restarting
-            setTimeout(() => {
-                startListening();
-            }, 100);
+            startListening();
         }
     };
 
     const handleDone = () => {
         onTranscript(transcript);
+        // Stop listening when done is clicked to ensure cleanup
+        stopListening();
         onClose();
     };
 

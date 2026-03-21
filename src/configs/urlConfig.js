@@ -5,6 +5,7 @@ export const URLConfigEnum = Object.freeze({
   APPOINTMENT_HISTORY: 'APPOINTMENT_HISTORY',
   PATIENT_VITAL_SIGNS: 'PATIENT_VITAL_SIGNS',
   PATIENT_VITAL_SIGNS_UPDATE: 'PATIENT_VITAL_SIGNS_UPDATE',
+  PATIENT_PREVIEW: 'PATIENT_PREVIEW',
 });
 
 // export const CMS_API_URL = 'https://api-cms.elevartechnologies.com/api/';
@@ -14,10 +15,11 @@ const URL_PATHS = {
   [URLConfigEnum.APPOINTMENT_HISTORY]: 'patient/appointment-history',
   [URLConfigEnum.PATIENT_VITAL_SIGNS]: 'patient/vitals-basic-get?patientId=',
   [URLConfigEnum.PATIENT_VITAL_SIGNS_UPDATE]: 'patient/vitals-basic',
+  [URLConfigEnum.PATIENT_PREVIEW]: 'patient/patient-appointment-preview'
 };
 
 // Get the full URL for a given enum key
-export const getApiUrl = (key, patientId = '') => {
+export const getApiUrl = (key, patientId = '', aappointment_id = '') => {
   const path = URL_PATHS[key];
 
   if (!path) {
@@ -26,6 +28,8 @@ export const getApiUrl = (key, patientId = '') => {
 
   if (key === URLConfigEnum.PATIENT_VITAL_SIGNS && patientId) {
     return `${API_BASE_URL}${path}${patientId}`;
+  } else if (key === URLConfigEnum.PATIENT_PREVIEW && aappointment_id && aappointment_id) {
+    return `${API_BASE_URL}${path}?appointment_id=${aappointment_id}&patient_id=${patientId}`;
   } else {
     return `${API_BASE_URL}${path}`;
   }

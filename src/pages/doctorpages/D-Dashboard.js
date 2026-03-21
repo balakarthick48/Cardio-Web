@@ -345,13 +345,16 @@ const Doctordashboard = () => {
             window.open(appointment.zoomMeetingUrl, '_blank');
         } else {
             // Navigate to patient detail page for in-person
+            console.log("Patient details", appointment)
             navigate("/patient-detail", {
                 state: {
-                    patientId: appointment?.id,
+                    patientId: appointment?.patientId,
                     name: appointment?.patientName,
                     email: appointment?.email,
                     mobile: appointment?.mobileNumber,
-                    address: appointment?.address
+                    address: appointment?.address,
+                    appointmentId: appointment.id,
+                    packageType: appointment.packageType
                 }
             });
         }
@@ -384,7 +387,7 @@ const Doctordashboard = () => {
         return rangeWithDots;
     }
     // Mock data
-const stats = [
+    const stats = [
         {
             title: "Today's Patients",
             value: dashboardData ? dashboardData.today_patients : 0,
@@ -395,7 +398,7 @@ const stats = [
             value: dashboardData ? dashboardData.upcoming_appointments : 0,
             icon: <img src={Icon} alt="icon" style={{ width: 28, height: 28 }} />
         },
-        { title: 'Total Consults', value:dashboardData ? dashboardData.total_consults : 0, icon: <img src={Icon3} alt="icon" style={{ width: 28, height: 28 }} /> },
+        { title: 'Total Consults', value: dashboardData ? dashboardData.total_consults : 0, icon: <img src={Icon3} alt="icon" style={{ width: 28, height: 28 }} /> },
         {
             title: "Video Call Count",
             value: dashboardData ? dashboardData.today_patients : 0,
@@ -406,7 +409,7 @@ const stats = [
             value: dashboardData ? dashboardData.upcoming_appointments : 0,
             icon: <img src={Icon} alt="icon" style={{ width: 28, height: 28 }} />
         },
-        { title: 'Emergency Count', value:dashboardData ? dashboardData.total_consults : 0, icon: <img src={Icon3} alt="icon" style={{ width: 28, height: 28 }} /> }
+        { title: 'Emergency Count', value: dashboardData ? dashboardData.total_consults : 0, icon: <img src={Icon3} alt="icon" style={{ width: 28, height: 28 }} /> }
     ];
 
     useEffect(() => {
@@ -617,49 +620,40 @@ const stats = [
                         </button>
                     </div>
 
-                    {/* Date Input (for Daily) */}
-                    {filterType === 'daily' && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <label style={{ fontSize: '14px', color: '#666', fontWeight: '500' }}>Select Date:</label>
-                            <input
-                                type="date"
-                                value={selectedDate}
-                                onChange={(e) => setSelectedDate(e.target.value)}
-                                style={{
-                                    padding: '8px 12px',
-                                    border: '1px solid #ddd',
-                                    borderRadius: '6px',
-                                    fontSize: '14px',
-                                    cursor: 'pointer'
-                                }}
-                            />
-                            <span style={{ fontSize: '14px', color: '#0a66ff', fontWeight: '600' }}>
-                                {formatDateDisplay(selectedDate)}
-                            </span>
+                    {/* Date/Month Input */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div>
+                            <label style={{ fontSize: '14px', color: '#666', fontWeight: '500' }}>
+                                {filterType === 'daily' ? 'Select Date:' : 'Select Month:'}
+                            </label>
                         </div>
-                    )}
-
-                    {/* Month Input (for Monthly) */}
-                    {filterType === 'monthly' && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <label style={{ fontSize: '14px', color: '#666', fontWeight: '500' }}>Select Month:</label>
-                            <input
-                                type="month"
-                                value={selectedMonth}
-                                onChange={(e) => setSelectedMonth(e.target.value)}
-                                style={{
-                                    padding: '8px 12px',
-                                    border: '1px solid #ddd',
-                                    borderRadius: '6px',
-                                    fontSize: '14px',
-                                    cursor: 'pointer'
-                                }}
-                            />
-                            <span style={{ fontSize: '14px', color: '#0a66ff', fontWeight: '600' }}>
-                                {formatMonthDisplay(selectedMonth)}
-                            </span>
-                        </div>
-                    )}
+                        <input
+                            type={filterType === 'daily' ? 'date' : 'month'}
+                            value={filterType === 'daily' ? selectedDate : selectedMonth}
+                            onChange={(e) =>
+                                filterType === 'daily'
+                                    ? setSelectedDate(e.target.value)
+                                    : setSelectedMonth(e.target.value)
+                            }
+                            style={{
+                                padding: '8px 12px',
+                                border: '1px solid #ddd',
+                                borderRadius: '6px',
+                                fontSize: '14px',
+                                cursor: 'pointer'
+                            }}
+                        />
+                        <span style={{
+                            fontSize: '14px',
+                            color: '#0a66ff',
+                            fontWeight: '600',
+                            paddingTop: filterType === 'monthly' ? 16 : 0
+                        }}>
+                            {filterType === 'daily'
+                                ? formatDateDisplay(selectedDate)
+                                : formatMonthDisplay(selectedMonth)}
+                        </span>
+                    </div>
                 </div>
 
                 {/* Stats Grid */}
