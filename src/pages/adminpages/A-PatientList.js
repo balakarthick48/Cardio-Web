@@ -230,7 +230,7 @@ const AdminPatientList = () => {
                                             <div
       style={{ color: "#2563eb", cursor: "pointer", fontWeight: "600" }}
       onClick={() =>
-        navigate("/patient-detail", {
+        navigate("/adminpatient-detail", {
           state: {
             patientId: row.id,
             name: row.patientName,
