@@ -19,6 +19,8 @@ import Vector1 from '../../assets/images/Vector1.png';
 import Vector2 from '../../assets/images/Vector2.png';
 import AdminSidebar from '../../components/AdminSidebar';
 import AdminHeader from '../../components/AdminHeader';
+import { FaCheck } from 'react-icons/fa';
+import { FaTimes } from 'react-icons/fa';
 
 const AdminAppoinment = () => {
        const [chatUser, setChatUser] = useState(null);
@@ -672,7 +674,7 @@ console.log('appointment>>><<<', appointment);
                                     onClick={() => getUpdateappointment(selectedCard.id, 'accept')}
                                     disabled={loading}
                                 >
-                                    {loading ? 'Processing...' : 'Accept'}
+                                    {loading ? 'Processing...' : <><FaCheck /> Accept</>}
                                 </button>
 
                                 <button
@@ -729,7 +731,7 @@ console.log('appointment>>><<<', appointment);
                                         setSelectedCard(null);
                                     }}
                                 >
-                                    Close
+                                    <FaTimes /> Close
                                 </button>
                             </div>
                         </div>
