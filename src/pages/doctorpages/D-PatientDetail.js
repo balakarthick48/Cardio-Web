@@ -14,6 +14,7 @@ import { FREQUENCY_OPTIONS } from '../../configs/prescriptionConstants';
 import downloadIcon from '../../assets/images/download.png';
 import ConfirmationModal from '../../components/ConfirmationModal';
 import { PatientStyles } from '../../styles/D-PatientDetail.styles.js';
+import { setCompleteAppointment } from '../../api/patientCheckoutComplete';
 import URLConfigEnum, { getApiUrl } from '../../configs/urlConfig';
 
 const PatientTabListModel = [
@@ -24,7 +25,6 @@ const PatientTabListModel = [
     { index: 4, name: 'present', displayTitle: 'Symptoms' },
     { index: 5, name: 'meeting process', displayTitle: 'Meeting Process' },
     { index: 6, name: 'diagnostic', displayTitle: 'Diagnostic Investigation' },
-    { index: 7, name: 'next meetup', displayTitle: 'Next Meetup' },
     { index: 8, name: 'preview', displayTitle: 'Preview' },
 ];
 const PatientDoseDropdownModel = [
@@ -39,7 +39,7 @@ const PatientEatingTypeDropdownModel = [
 
 export default function PatientDetail() {
     const location = useLocation();
-    const { patientId, email, mobile, address, name } = location.state || {};
+    const { patientId, email, mobile, address, name, appointmentId, packageType } = location.state || {};
     // const patientIdFromState = location.state?.patientId || null;
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -57,6 +57,7 @@ export default function PatientDetail() {
     const [isSpeechModalOpen, setIsSpeechModalOpen] = useState(false);
     const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
     const [activeSpeechField, setActiveSpeechField] = useState(null);
+    const [isCheckoutConfirmModalOpen, setIsCheckoutConfirmModalOpen] = useState(false);
 
     const [familyHistory, setFamilyHistory] = useState([]);
 
@@ -125,6 +126,10 @@ export default function PatientDetail() {
     // Local inputs for new investigation entry
     const [investigationTypeInput, setInvestigationTypeInput] = useState('');
     const [investigationDescriptionInput, setInvestigationDescriptionInput] = useState('');
+
+    const [todaysAppointment, setTodaysAppointment] = useState(appointmentId);
+    const [todaysAppointmentPackage, setTodaysAppointmentPackage] = useState(packageType);
+    const [previewData, setPreviewData] = useState(null);
 
     const handleSubmitInvestigation = () => {
         const payload = {
@@ -200,6 +205,7 @@ export default function PatientDetail() {
         setNewFamilyEntry(familyHistoryData[idx]);
         setEditingFamilyIdx(idx);
         setIsEditingFamilyHistory(true);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     // Handle delete family history entry
@@ -260,7 +266,7 @@ export default function PatientDetail() {
                 nextVisitDate: firstSymptom.next_visit_date || ''
             });
         }
-    }
+    };
 
     const exportHeaderAndSection = async (sectionRef, filename = 'section.pdf') => {
         setIsExportingPDF(true);
@@ -476,6 +482,7 @@ export default function PatientDetail() {
             });
             const data = await response.json();
             console.log('prescriptionsrespon######:', data);
+            console.log('todaysAppointment', todaysAppointment);
             if (response.ok && Array.isArray(data.existingMedicines)) {
                 const medicines = data.existingMedicines;
                 // setPrescriptions(medicines); // Keep the flat list for editing/adding
@@ -489,12 +496,11 @@ export default function PatientDetail() {
                 }, {});
                 let dates = Object.keys(grouped).sort().reverse(); // Sort dates descending
                 const firstData = dates[0] ?? null
-                if (firstData && firstData !== getTodayDate()) {
+                if (firstData && firstData !== getTodayDate() && todaysAppointment) {
                     grouped[getTodayDate()] = [];
                 }
-                dates = Object.keys(grouped).sort().reverse()
                 setGroupedPrescriptions(grouped);
-                const dateToDisplay = selectedPrescriptionDate || (dates.length > 0 ? dates[0] : getTodayDate());
+                const dateToDisplay = selectedPrescriptionDate || (todaysAppointment ? getTodayDate() : (dates.length > 0 ? dates[0] : getTodayDate()));
 
                 if (!selectedPrescriptionDate) {
                     setSelectedPrescriptionDate(dateToDisplay);
@@ -643,37 +649,14 @@ export default function PatientDetail() {
             } else {
                 setError(data.message || 'Failed');
                 setLoading(false);
+                toast.error(data.message ?? 'Network error');
             }
         } catch (err) {
             setError('Network error');
             setLoading(false);
+            toast.error(err ?? 'Network error');
         }
     };
-
-    // const getPatients = async () => {
-    //     setLoading(true);
-    //     setError('');
-    //     try {
-    //         let url = `${API_BASE_URL}patient/getAllPatientDetails`;
-    //         console.log('Fetching:', url);
-    //         const response = await fetch(url, {
-    //             method: 'POST',
-    //             headers: { 'Content-Type': 'application/json' },
-    //             body: JSON.stringify({ month: 9 })
-    //         });
-    //         console.log('Response status:', response.status);
-    //         const data = await response.json();
-    //         console.log('patients response:', data);
-    //         if (response.ok) {
-    //             setPatients(data.data);
-    //         } else {
-    //             setError(data.message || 'Failed to fetch patients detail');
-    //         }
-    //     } catch (err) {
-    //         setError('Network erroaa');
-    //     }
-    //     setLoading(false);
-    // };
 
     const getPatients = async () => {
         setLoading(true);
@@ -778,12 +761,21 @@ export default function PatientDetail() {
             toast.error('Please add at least one family history record');
             return;
         }
+        if (!todaysAppointment) {
+            toast.error('No appointment found for today');
+            return;
+        }
+        if (!patientId) {
+            toast.error('Patient ID not found');
+            return;
+        }
 
         setLoading(true);
 
         try {
             const body = {
                 patientId: Number(patientId),
+                appointmentId: todaysAppointment,
                 records: [
                     {
                         condition_name: newFamilyEntry.condition_name,
@@ -833,7 +825,7 @@ export default function PatientDetail() {
 
         try {
             const body = {
-                patientId: Number(patientId),
+                patientId: patientId,
                 temperature: vitalSigns.temperature,
                 heartRate: vitalSigns.heartRate,
                 bloodPressure: `${vitalSigns.bloodPressure.systolic || ''}/${vitalSigns.bloodPressure.diastolic || ''}`,
@@ -921,7 +913,7 @@ export default function PatientDetail() {
                                 bmi: firstData.bmi || ''
                             }
                         ))
-                    } else {
+                    } else if (todaysAppointment) {
                         setupDefaultVitalForToday(sortedVitals)
                     }
                 } else {
@@ -938,6 +930,47 @@ export default function PatientDetail() {
             setError('Network error');
         }
         setLoading(false);
+    };
+
+    const getAppointmentBy = async (patientId) => {
+        setLoading(true);
+        setError('');
+        try {
+            // let url = `${API_BASE_URL}doctor/getappointments`; //allapointment
+            let url = `${API_BASE_URL}patient/getappointments?patientId=${patientId}`;
+            console.log('Fetching:', url);
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            console.log('Response status:', response.status);
+            const data = await response.json();
+            console.log('appointment...:', data);
+            if (response.ok && data.data) {
+                const appointments = Array.isArray(data.data) ? data.data : [];
+                const todaysAppointmentForPatient = appointments.find((item) => item.slotDate === getTodayDate());
+                if (todaysAppointmentForPatient) {
+                    if (todaysAppointmentForPatient.appointmentId) {
+                        setTodaysAppointment(todaysAppointmentForPatient.appointmentId);
+                        console.log("Today's appointment ID found and set:", todaysAppointmentForPatient.appointmentId);
+                        getPreviewData(todaysAppointmentForPatient.appointmentId);
+                    }
+                    if (todaysAppointmentForPatient.packageType) {
+                        setTodaysAppointmentPackage(todaysAppointmentForPatient.packageType);
+                    }
+                } else {
+                    console.log("No appointment for today for this patient.");
+                }
+            } else {
+                console.log("Todays appointment id Error")
+                setError(data.message || 'Failed to fetch patients detail');
+            }
+        } catch (err) {
+            setError('Network erroaa');
+        } finally {
+            setLoading(false);
+            getPrescriptions();
+        }
     };
 
     const setupDefaultVitalForToday = (sortedVitals) => {
@@ -982,7 +1015,7 @@ export default function PatientDetail() {
             });
             const data = await response.json();
             console.log('symptoms response:', data);
-            if (response.ok && data.data) {
+            if (response.ok && data.data && Array.isArray(data.data)) {
                 const symptoms = data.data;
                 const grouped = symptoms.reduce((acc, item) => {
                     const date = (item.created_at || '').split('T')[0];
@@ -996,7 +1029,7 @@ export default function PatientDetail() {
                 }, {});
 
                 const today = getTodayDate();
-                if (!grouped[today]) {
+                if (!grouped[today] && todaysAppointment) {
                     grouped[today] = [{ created_at: getTodayDate() }];
                 }
 
@@ -1004,16 +1037,16 @@ export default function PatientDetail() {
                 setGroupedSymptoms(grouped);
                 let todaysItem = grouped[dates[0]]
                 let nextDay = grouped[dates[1]]
-                if (todaysItem[0].next_visit_date !== undefined && todaysItem[0].next_visit_date !== null) {
+                if (todaysItem?.[0]?.next_visit_date) {
                     setGeneralNextVisitDate(todaysItem[0].next_visit_date);
-                } else if (nextDay[0].next_visit_date !== undefined && nextDay[0].next_visit_date !== null) {
+                } else if (nextDay?.[0]?.next_visit_date) {
                     setGeneralNextVisitDate(nextDay[0].next_visit_date);
                 } else {
                     setGeneralNextVisitDate('');
                 }
-
-                const dateToDisplay = selectedSymptomDate || today;
-
+                const firstDateSelected = grouped[dates[0]]?.[0]?.created_at || '';
+                const dateToDisplay = selectedSymptomDate || (todaysAppointment ? today : firstDateSelected);
+                console.log('dateToDisplay:', dateToDisplay, firstDateSelected);
                 if (!selectedSymptomDate) {
                     setSelectedSymptomDate(dateToDisplay);
                 }
@@ -1038,8 +1071,7 @@ export default function PatientDetail() {
                     });
                 }
                 setIsEditingSymptoms(false);
-
-            } else {
+            } else if (todaysAppointment) {
                 const today = getTodayDate();
                 setGroupedSymptoms({ [today]: [] });
                 setSelectedSymptomDate(today);
@@ -1128,21 +1160,21 @@ export default function PatientDetail() {
                 }, {});
 
                 const today = getTodayDate();
-                if (!grouped[today]) {
+                if (!grouped[today] && todaysAppointment) {
                     grouped[today] = [];
                 }
 
                 const dates = Object.keys(grouped).sort().reverse();
                 setGroupedInvestigations(grouped);
 
-                const dateToDisplay = selectedInvestigationDate || (dates.length > 0 ? dates[0] : today);
+                const dateToDisplay = selectedInvestigationDate || (dates.length > 0 ? dates[0] : (todaysAppointment ? today : ''));
 
                 if (!selectedInvestigationDate) {
                     setSelectedInvestigationDate(dateToDisplay);
                 }
 
                 setInvestigationData(grouped[dateToDisplay] || []);
-            } else {
+            } else if (todaysAppointment) {
                 const today = getTodayDate();
                 setGroupedInvestigations({ [today]: [] });
                 setSelectedInvestigationDate(today);
@@ -1154,7 +1186,34 @@ export default function PatientDetail() {
         }
         setLoading(false);
     };
-    // console.log('investigationData???...', investigationData);
+
+    const getPreviewData = async (appointmentId) => {
+        if (!appointmentId) {
+            console.log('No appointmentId to preview');
+            return;
+        }
+        try {
+            const url = new URL(getApiUrl(URLConfigEnum.PATIENT_PREVIEW, patientId, appointmentId));
+            console.log('URLString patient', url);
+            console.log('vitals url:', url);
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            const data = await response.json();
+            if (response.ok) {
+                setPreviewData(data.data);
+            }
+        } catch (err) {
+            console.error('Error fetching symptoms:', err);
+            setError('Network error');
+        }
+        setLoading(false);
+    };
+
+    const completeAction = () => {
+        setIsCheckoutConfirmModalOpen(true);
+    }
 
     const dataURLtoFile = (dataurl, filename) => {
         const arr = dataurl.split(',');
@@ -1211,62 +1270,25 @@ export default function PatientDetail() {
 
         setLoading(false);
     };
-    //     const insertInvestigation = async (investigationFormData) => {
-    //     setLoading(true);
 
-    //     try {
-    //         const formData = new FormData();
-    //         formData.append('patientId', Number(patientId));
-    //         formData.append('investigationType', investigationFormData.investigationType || '');
-    //         formData.append('description', investigationFormData.description || '');
+    const handleConfirmCheckout = async () => {
+        // This method is intentionally left empty for now, as per the request.
+        setIsCheckoutConfirmModalOpen(false);
+        if (todaysAppointment && patientId) {
+            try {
+                const data = await setCompleteAppointment(todaysAppointment, patientId);
+                if (data) {
+                    toast.success('Appointment completed successfully');
+                }
+            } catch (error) {
+                console.error('Error completing appointment:', error);
+                toast.error('Failed to complete appointment');
+            }
+        } else {
+            toast.warning('No appointment/patient ID found for today');
+        }
+    };
 
-    //         // Convert base64 data URL to Blob for file upload
-    //         if (investigationFormData.report_file) {
-    //             const dataUrl = investigationFormData.report_file;
-    //             const arr = dataUrl.split(',');
-    //             const mime = arr[0].match(/:(.*?);/)[1];
-    //             const bstr = atob(arr[1]);
-    //             let n = bstr.length;
-    //             const u8arr = new Uint8Array(n);
-    //             while (n--) {
-    //                 u8arr[n] = bstr.charCodeAt(n);
-    //             }
-    //             const blob = new Blob([u8arr], { type: mime });
-    //             formData.append('report', blob, 'investigation_image.png');
-    //         }
-
-    //         console.log("Payloadinvestigation..**:", formData);
-
-    //         const response = await fetch(
-    //             `${API_BASE_URL}patient/investigation`,
-    //             {
-    //                 method: 'POST',
-    //                 headers: { 'Content-Type': 'application/json' },
-    //                 body: JSON.stringify(formData)
-    //             }
-    //         );
-
-    //         let data;
-    //         try {
-    //             data = await response.json();
-    //         } catch {
-    //             data = {};
-    //         }
-
-    //         if (response.ok) {
-    //             toast.success('Investigation updated successfully');
-    //             setaddInvestigationData(false);
-    //         } else {
-    //             console.error(data);
-    //             toast.error(data.message || 'Failed to update');
-    //         }
-    //     } catch (err) {
-    //         console.error(err);
-    //         toast.error('Network error');
-    //     }
-
-    //     setLoading(false);
-    // };
     // Example state for vital signs and basic data
     const [vitalSigns, setVitalSigns] = useState({
         temperature: '',
@@ -1326,25 +1348,6 @@ export default function PatientDetail() {
 
     const handleBasicSave = () => {
         setbasicEditing({ section: null, field: null });
-        // Fetch latest data and update both vitalSigns and basicData after save
-        // getVitalSignsData().then(() => {
-        //     if (vitalSignsData && Array.isArray(vitalSignsData) && vitalSignsData.length > 0) {
-        //         const latest = vitalSignsData[0];
-        //         setVitalSigns(prev => ({
-        //             ...prev,
-        //             age: latest.age || '',
-        //             height: latest.height || '',
-        //             weight: latest.weight || '',
-        //             bmi: latest.bmi || ''
-        //         }));
-        //         setBasicData({
-        //             age: latest.age || '',
-        //             height: latest.height || '',
-        //             weight: latest.weight || '',
-        //             bmi: latest.bmi || ''
-        //         });
-        //     }
-        // });
     };
 
     const pickField = (obj, keys = []) => {
@@ -1361,162 +1364,12 @@ export default function PatientDetail() {
         return null;
     };
 
-    // const renderSection = (title, value) => {
-    //     if (value === null || value === undefined) return null;
-    //     let content = '';
-    //     if (typeof value === 'string') content = value;
-    //     else if (Array.isArray(value)) content = value.join(', ');
-    //     else content = JSON.stringify(value, null, 2);
-
-    //     return (
-    //         <div style={{ marginTop: 12 }}>
-    //             <h4 style={{ margin: '6px 0', fontSize: 16 }}>{title}</h4>
-    //             <div style={{ background: '#fff', padding: 12, borderRadius: 6, border: '1px solid #e6eefc', whiteSpace: 'pre-wrap' }}>
-    //                 {content}
-    //             </div>
-    //         </div>
-    //     );
-    // };
     const titleize = (key = '') =>
         key
             .replace(/([A-Z])/g, ' $1')
             .replace(/[_\-]/g, ' ')
             .replace(/\b\w/g, (c) => c.toUpperCase())
             .trim();
-    // prescription working 9.11
-    //     const renderSection = (title, value) => {
-    //         if (value === null || value === undefined) return null;
-
-    //         // Prescription handled separately when it's an array/object of medicines
-    //         if (title.toLowerCase().includes('prescription')) {
-    //             return renderPrescriptionSection(title, value);
-    //         }
-
-    //         // If string -> render as paragraph under heading
-    //         if (typeof value === 'string') {
-    //             return (
-    //                 <div style={{ marginTop: 18 }}>
-    //                     <h4 style={{ color: '#0a66ff', marginBottom: 12 }}>{title}</h4>
-    //                     <div style={{ background: '#fff', padding: 16, borderRadius: 6, lineHeight: 1.6, color:'#333' }}>
-    //                         {value}
-    //                     </div>
-    //                 </div>
-    //             );
-    //         }
-    //  if (Array.isArray(value)) {
-    //             return (
-    //                 <div style={{ marginTop: 18 }}>
-    //                     <h4 style={{ color: '#0a66ff', marginBottom: 12 }}>{title}</h4>
-    //                     <div style={{ background: '#fff', padding: 16, borderRadius: 6, color:'#333' }}>
-    //                         {value.map((v, i) => (
-    //                             <p key={i} style={{ marginBottom: 8 }}>{typeof v === 'string' ? v : JSON.stringify(v)}</p>
-    //                         ))}
-    //                     </div>
-    //                 </div>
-    //             );
-    //         }
-
-    //         // If object -> render left-right key/value rows similar to screenshot
-    //         if (typeof value === 'object') {
-    //             const rows = Object.entries(value)
-    //                 // filter out empty/null
-    //                 .filter(([, v]) => v !== null && v !== undefined && String(v).trim() !== '')
-    //                 .map(([k, v]) => ({ key: titleize(k), value: v }));
-
-    //             if (rows.length === 0) return null;
-    //  return (
-    //                 <div style={{ marginTop: 18 }}>
-    //                     <h4 style={{ color: '#0a66ff', marginBottom: 12 }}>{title}</h4>
-    //                     <div style={{ background: '#fff', padding: 12, borderRadius: 6 }}>
-    //                         {rows.map((r, idx) => (
-    //                             <div key={idx} style={{ display: 'flex', padding: '12px 0', borderBottom: idx < rows.length - 1 ? '1px solid #f0f0f0' : 'none' }}>
-    //                                 <div style={{ width: 220, color: '#666', fontWeight: 600 }}>{r.key} :</div>
-    //                                 <div style={{ flex: 1, color: '#333', lineHeight: 1.6 }}>
-    //                                     {Array.isArray(r.value) ? r.value.join(', ') : typeof r.value === 'object' ? JSON.stringify(r.value, null, 2) : r.value}
-    //                                 </div>
-    //                             </div>
-    //                         ))}
-    //                     </div>
-    //                 </div>
-    //             );
-    //         }
-
-    //         return null;
-    //     };
-
-    // const renderSection = (title, value) => {
-    //     if (value === null || value === undefined) return null;
-
-    //     // Prescription section handled separately
-    //     if (title.toLowerCase().includes('prescription')) {
-    //         return renderPrescriptionSection(title, value);
-    //     }
-
-    //     // For symptoms array
-    //     if (Array.isArray(value)) {
-    //         return (
-    //             <div style={{ marginTop: 18 }}>
-    //                 <h4 style={{ color: '#0a66ff', marginBottom: 12 }}>{title}</h4>
-    //                 <div style={{ background: '#fff', padding: 16, borderRadius: 6, color: '#333' }}>
-    //                     {value.map((item, i) => (
-    //                         <p key={i} style={{ marginBottom: 8 }}>
-    //                             • {typeof item === 'string' ? item : JSON.stringify(item)}
-    //                         </p>
-    //                     ))}
-    //                 </div>
-    //             </div>
-    //         );
-    //     }
-
-    //     // For remedies object
-    //     if (title === 'Remedies' && Array.isArray(value)) {
-    //         return (
-    //             <div style={{ marginTop: 18 }}>
-    //                 <h4 style={{ color: '#0a66ff', marginBottom: 12 }}>{title}</h4>
-    //                 <div style={{ background: '#fff', padding: 16, borderRadius: 6, color: '#333' }}>
-    //                     {value.map((remedy, i) => (
-    //                         <div key={i} style={{ marginBottom: 12 }}>
-    //                             {remedy.medicine && (
-    //                                 <p><strong>Medicine:</strong> {remedy.medicine.join(', ')}</p>
-    //                             )}
-    //                             {remedy.dosage && (
-    //                                 <p><strong>Dosage:</strong> {remedy.dosage.join(', ')}</p>
-    //                             )}
-    //                             {remedy.purpose && (
-    //                                 <p><strong>Purpose:</strong> {remedy.purpose.join(', ')}</p>
-    //                             )}
-    //                         </div>
-    //                     ))}
-    //                 </div>
-    //             </div>
-    //         );
-    //     }
-
-    //     // For simple string/text sections (like Follow Up)
-    //     if (typeof value === 'string' || Array.isArray(value)) {
-    //         const content = Array.isArray(value) ? value.join('\n') : value;
-    //         return (
-    //             <div style={{ marginTop: 18 }}>
-    //                 <h4 style={{ color: '#0a66ff', marginBottom: 12 }}>{title}</h4>
-    //                 <div style={{ background: '#fff', padding: 16, borderRadius: 6, lineHeight: 1.6, color: '#333' }}>
-    //                     {content}
-    //                 </div>
-    //             </div>
-    //         );
-    //     }
-
-    //     // For any other object types
-    //     return (
-    //         <div style={{ marginTop: 18 }}>
-    //             <h4 style={{ color: '#0a66ff', marginBottom: 12 }}>{title}</h4>
-    //             <div style={{ background: '#fff', padding: 16, borderRadius: 6, color: '#333' }}>
-    //                 <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit' }}>
-    //                     {JSON.stringify(value, null, 2)}
-    //                 </pre>
-    //             </div>
-    //         </div>
-    //     );
-    // };
     const renderValue = (val) => {
         if (val === null || val === undefined) return '';
         if (typeof val === 'string' || typeof val === 'number') return val;
@@ -1720,19 +1573,21 @@ export default function PatientDetail() {
         );
     };
 
-    // console.log('meetingprocess?<>><><', meetingprocess);
-    // console.log('Symptoms((())):', meetingprocess?.summary?.symptoms);
-    // console.log('<<<<<<>>>>', symptomsData);
-    // console.log('familyHistory((())):', familyHistory);
-    // console.log('vitalSignsData+++++:', vitalSignsData[0]?.temperature);
     useEffect(() => {
         // This effect fetches all the initial data for the patient.
         // It runs only when the `patientId` changes.
         if (!patientId) {
             return; // Guard clause to prevent fetching data without a patientId.
         }
-
-        getPrescriptions();
+        console.log("appointmentId", appointmentId, "patientId", patientId, todaysAppointment);
+        if (todaysAppointment) {
+            console.log("appointmentId if", appointmentId, "patientId", patientId);
+            getPrescriptions();
+            getPreviewData(todaysAppointment)
+        } else {
+            console.log("appointmentId null and api call", appointmentId, "patientId", patientId);
+            getAppointmentBy(patientId)
+        }
         getPatients();
         getfamilyHistory();
         getVitalSignsData();
@@ -1743,72 +1598,7 @@ export default function PatientDetail() {
         // This is because they are redefined on every render, and including them
         // would cause an infinite loop. We only want to refetch when patientId changes.
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [patientId]);
-
-    // useEffect(() => {
-    //   const SpeechRecognition =
-    //     window.SpeechRecognition || window.webkitSpeechRecognition;
-
-    //   if (!SpeechRecognition) {
-    //     alert("Speech Recognition not supported");
-    //     return;
-    //   }
-
-    //   const recognition = new SpeechRecognition();
-    //   recognition.continuous = false;
-    //   recognition.lang = "en-US";
-
-    //   recognition.onresult = (event) => {
-    //     const transcript = event.results[0][0].transcript;
-
-    //     if (!activeField) return;
-
-    //     setNewPrescription((prev) => {
-    //       if (activeField.includes(".")) {
-    //         const [parent, child] = activeField.split(".");
-    //         return {
-    //           ...prev,
-    //           [parent]: {
-    //             ...prev[parent],
-    //             [child]: transcript,
-    //           },
-    //         };
-    //       }
-
-    //       return {
-    //         ...prev,
-    //         [activeField]: transcript,
-    //       };
-    //     });
-    //   };
-
-    //   recognition.onend = () => {
-    //     setListening(false);
-    //     setActiveField(null);
-    //   };
-
-    //   recognitionRef.current = recognition;
-
-    //   return () => recognition.stop();
-    // }, [activeField]);
-
-    // const startListening = (fieldName) => {
-    //   if (listening) return;
-    //   if (!recognitionRef.current) return;
-
-    //   setActiveField(fieldName);
-    //   setListening(true);
-    //   recognitionRef.current.start();
-    // };
-    // const stopListening = () => {
-    //   if (!recognitionRef.current) return;
-
-    //   recognitionRef.current.stop();
-    //   setListening(false);
-    //   setActiveField(null);
-    // };
-
-    // console.log('prescriptions///', prescriptions);
+    }, [patientId, todaysAppointment]);
 
     const headerTable = (title, ref, filename, headerTitle) => {
         return (
@@ -1817,7 +1607,7 @@ export default function PatientDetail() {
                 {downloadButtonUI(title, ref, filename)}
             </div>
         )
-    }
+    };
 
     const downloadButtonUI = (title, ref, filename) => {
         return (
@@ -1838,7 +1628,7 @@ export default function PatientDetail() {
                 </div>
             </button>
         )
-    }
+    };
     const getTodayDate = () => {
         const today = new Date();
 
@@ -1866,7 +1656,7 @@ export default function PatientDetail() {
 
         const formatter = new Intl.DateTimeFormat('en-CA', options);
         return formatter.format(yesterday);
-    }
+    };
     const getPrescriptionDateTitle = (date) => {
         if (date === getTodayDate()) {
             return 'Today';
@@ -1882,7 +1672,7 @@ export default function PatientDetail() {
         // if (customPrescriptionByDate.length === 0 || customPrescriptionByDate === null || customPrescriptionByDate === undefined) return
         setSelectedPrescriptionDate(date)
         setPrescriptions(customPrescriptionByDate);
-    }
+    };
 
     const renderProfileUI = () => {
         return (
@@ -1954,7 +1744,7 @@ export default function PatientDetail() {
                 </div>
             </div>
         )
-    }
+    };
 
     const vitalEditableUI = () => {
         return (
@@ -2139,7 +1929,7 @@ export default function PatientDetail() {
                 </div>
             </>
         )
-    }
+    };
     const renderVitalUI = () => {
         const selectedVitalData = vitalSignsData.find(vital => vital.dateOfRecord === selectedVitalSign.dateOfRecord);
         console.log("selectedVitalData", selectedVitalData)
@@ -2162,7 +1952,7 @@ export default function PatientDetail() {
                 </div>
                 {vitalSignsData.length > 0 && (
                     <>
-                        {getPrescriptionDateTitle(selectedVitalData.dateOfRecord) === 'Today' && (
+                        {getPrescriptionDateTitle(selectedVitalData.dateOfRecord) === 'Today' && todaysAppointment && (
                             vitalEditableUI()
                         )}
                         {getPrescriptionDateTitle(selectedVitalData.dateOfRecord) !== 'Today' && (
@@ -2195,7 +1985,7 @@ export default function PatientDetail() {
                         )}
                     </>
                 )}
-                {!selectedVitalSign && (
+                {!selectedVitalSign && todaysAppointment && (
                     vitalEditableUI()
                 )}
 
@@ -2250,7 +2040,7 @@ export default function PatientDetail() {
                         </div> */}
             </div>
         )
-    }
+    };
 
     const renderFamilyHistoryUI = () => {
         return (
@@ -2279,6 +2069,13 @@ export default function PatientDetail() {
                                         <td style={PatientStyles.tableTd}>{item.status}</td>
                                     </tr>
                                 ))}
+                                {familyHistory && familyHistory.length == 0 && (
+                                    <tr>
+                                        <td colSpan="3" style={PatientStyles.tableTd}>
+                                            No Family Medical History
+                                        </td>
+                                    </tr>
+                                )}
                             </tbody>
                         </table>
 
@@ -2438,7 +2235,7 @@ export default function PatientDetail() {
                 )}
             </div>
         )
-    }
+    };
 
     const renderPrescriptionUI = () => {
         return (
@@ -2690,7 +2487,7 @@ export default function PatientDetail() {
                 )}
             </div>
         )
-    }
+    };
 
     /**
      * Renders the present symptoms UI section.
@@ -3047,21 +2844,7 @@ export default function PatientDetail() {
                 )}
             </div>
         )
-    }
-
-    const renderNextMeetupUI = () => {
-        return (
-            <div className="patient-section" style={PatientStyles.marginTop24}>
-                <h3>Next Meetup</h3>
-                <div style={PatientStyles.nextMeetupContainer}>
-                    <div style={{ display: 'flex', gap: 16 }}>
-                        <label style={PatientStyles.nextMeetup}>Next Visit Date:</label>
-                        <label style={PatientStyles.nextMeetupDate}>{generalNextVisitDate === '' ? 'No Next visit time set' : generalNextVisitDate}</label>
-                    </div>
-                </div>
-            </div>
-        )
-    }
+    };
 
     const renderMeetingProcessUI = () => {
         return (
@@ -3232,7 +3015,7 @@ export default function PatientDetail() {
                 )}
             </div>
         )
-    }
+    };
 
     const renderDiagnosticUI = () => {
         return (
@@ -3440,8 +3223,92 @@ export default function PatientDetail() {
                 )}
             </div>
         )
-    }
+    };
+    const renderPreviewUI = () => {
+        if (!previewData) return null;
 
+        return (
+            <>
+                <div style={PatientStyles.previewContainer}>
+                    {/* Left Column */}
+                    <div style={PatientStyles.previewLeftColumn}>
+                        <div style={PatientStyles.previewRow}>
+                            <span style={PatientStyles.previewLabel}>Patient Name:</span>
+                            <span style={PatientStyles.previewValue}>{previewData.patient_name}</span>
+                        </div>
+                        <div style={PatientStyles.previewRow}>
+                            <span style={PatientStyles.previewLabel}>Patient ID:</span>
+                            <span style={PatientStyles.previewValue}>PA{previewData.patient_id?.toString().padStart(3, '0')}</span>
+                        </div>
+                        <div style={PatientStyles.previewRow}>
+                            <span style={PatientStyles.previewLabel}>Package:</span>
+                            <span style={PatientStyles.previewValueCapitalize}>{previewData.package}</span>
+                        </div>
+                        <div style={PatientStyles.previewRow}>
+                            <span style={PatientStyles.previewLabel}>Mail ID:</span>
+                            <span style={PatientStyles.previewValue}>{previewData.email}</span>
+                        </div>
+                        <div style={PatientStyles.previewRow}>
+                            <span style={PatientStyles.previewLabel}>Contact No:</span>
+                            <span style={PatientStyles.previewValue}>{previewData.contact_no}</span>
+                        </div>
+                        <div style={PatientStyles.previewRow}>
+                            <span style={PatientStyles.previewLabel}>Address:</span>
+                            <span style={PatientStyles.previewValue}>{previewData.address}</span>
+                        </div>
+                    </div>
+
+                    {/* Blue Vertical Divider */}
+                    <div style={PatientStyles.previewDivider}></div>
+
+                    {/* Right Column */}
+                    <div style={PatientStyles.previewRightColumn}>
+                        <div style={PatientStyles.previewRow}>
+                            <span style={PatientStyles.previewLabel}>Date:</span>
+                            <span style={PatientStyles.previewValue}>{previewData.date}</span>
+                        </div>
+                        <div style={PatientStyles.previewRow}>
+                            <span style={PatientStyles.previewLabel}>Slot time:</span>
+                            <span style={PatientStyles.previewValue}>{previewData.slot_time}</span>
+                        </div>
+                        <div style={PatientStyles.previewRow}>
+                            <span style={PatientStyles.previewLabel}>Check In:</span>
+                            <span style={PatientStyles.previewValue}>{previewData.check_in}</span>
+                        </div>
+                        <div style={PatientStyles.previewRow}>
+                            <span style={PatientStyles.previewLabel}>Checkout:</span>
+                            <span style={PatientStyles.previewValue}>{previewData.check_out || '--'}</span>
+                        </div>
+                        <div style={PatientStyles.previewRow}>
+                            <span style={PatientStyles.previewLabel}>Duration:</span>
+                            <span style={PatientStyles.previewValue}>{previewData.duration === "null mins" ? '--' : previewData.duration}</span>
+                        </div>
+                        <div style={PatientStyles.previewRow}>
+                            <span style={PatientStyles.previewLabel}>Problem:</span>
+                            <span style={PatientStyles.previewValue}>{previewData.problem}</span>
+                        </div>
+                    </div>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 24, marginRight: 24 }}>
+                    <button
+                        className="pdf-btn"
+                        title={'Complete'}
+                        // onClick={() => exportSectionToPDF(prescriptionRef, 'Prescription.pdf')}
+                        onClick={() => completeAction()}
+                        style={{
+                            ...PatientStyles.pdfBtn
+                        }}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, height: 24, width: 100, justifyContent: 'center' }}>
+                            <div>
+                                <label style={{ fontSize: 16 }}>Complete</label>
+                            </div>
+                        </div>
+                    </button>
+                </div>
+            </>
+        );
+    };
     return (
         <div className="patient-profile">
             <Sidebar />
@@ -3475,6 +3342,12 @@ export default function PatientDetail() {
                     <div style={PatientStyles.tabsContainer}>
                         {PatientTabListModel.sort((a, b) => a.index - b.index).map((tab) => {
                             const active = activeTab === tab.name;
+                            if (tab.name === 'meeting process' && todaysAppointmentPackage !== 'video call') {
+                                return <div key={'meeting-process-empty'}></div>;
+                            }
+                            if (tab.name === 'preview' && (!todaysAppointment && !previewData)) {
+                                return <div key={'preview'}></div>;
+                            }
                             return (
                                 <button
                                     key={tab.name}
@@ -3529,190 +3402,8 @@ export default function PatientDetail() {
                 {activeTab === 'prescription' && ( // This block seems to be duplicated, I will refactor the second one.
                     renderPrescriptionUI()
                 )}
-                {/* <div className="patient-section" style={PatientStyles.marginTop140}>
-                    <h3>Add Prescription</h3>
-                    <table className="prescription-table">
-                        <thead>
-                            <tr>
-                                <th>No.</th>
-                                <th>Medicine Name</th>
-                                <th>Quantity</th>
-                                <th>F</th>
-                                <th>A</th>
-                                <th>E</th>
-                                <th>N</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {prescriptions.map((med, idx) => (
-                                <tr key={med.id || idx}>
-                                    <td>{idx + 1 < 10 ? `0${idx + 1}.` : `${idx + 1}.`}</td>
-                                    <td>{med.medicine_name}</td>
-                                    <td>{med.quantity}</td>
-                                    <td>{med.frequency_F}</td>
-                                    <td>{med.frequency_A}</td>
-                                    <td>{med.frequency_E}</td>
-                                    <td>{med.frequency_N}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                     
-                    </table>
-                </div> */}
-                {/* {activeTab === 'prescription' && (
-                    <div className="patient-section" style={PatientStyles.marginTop140}>
-                        <h3>Add Prescriptions</h3>
-                        <table
-                            className="prescription-table"
-                            style={PatientStyles.prescriptionTable}
-                        >
-                            <thead>
-                                <tr>
-                                    <th>No.</th>
-                                    <th>Medicine Name</th>
-                                    <th>Quantity</th>
-                                    <th>Forenoon</th>
-                                    <th>Afternoon</th>
-                                    <th>Evening</th>
-                                    <th>Night</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {prescriptions.map((med, idx) => (
-                                    <tr key={med.id || idx}>
-                                        <td>{idx + 1 < 10 ? `0${idx + 1}.` : `${idx + 1}.`}</td>
-                                        <td>{med.medicine_name}</td>
-                                        <td>{med.quantity}</td>
-                                        <td>{med.frequency_F}</td>
-                                        <td>{med.frequency_A}</td>
-                                        <td>{med.frequency_E}</td>
-                                        <td>{med.frequency_N}</td>
-                                        <td>
-                                            <button onClick={() => handleEditPrescription(idx)}>Edit</button>
-                                        </td>
-                                    </tr>
-                                ))}
-                                <tr>
-                                    <td><div className='tdDivPlain'>{editingIdx !== null ? editingIdx + 1 : prescriptions.length + 1}</div></td>
-                                    <td style={{ padding: '8px' }}>
-                                        <div style={{ display: 'flex', gap: 6 }}>
-                                            <input
-                                                value={newPrescription.medicineName}
-                                                // value={listening && activeField === 'medicineName' ? text : newPrescription.medicineName}
-                                                onChange={(e) => handlePrescriptionChange(e, 'medicineName')}
-                                                placeholder="Medicine Name"
-                                                style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
-                                            />
-                                            <button className='micBtn' onClick={() => startListening('medicineName')}>🎤</button>
-                                        </div>
-                                    </td>
-                                    <td style={{ padding: '8px' }}>
-                                        <div style={{ display: 'flex', gap: 6 }}>
-                                            <select
-                                                value={newPrescription.quantity}
-                                                onChange={(e) => handlePrescriptionChange(e, 'quantity')}
-                                                style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
-                                            >
-                                                {Array.from({ length: 60 }, (_, i) => i + 1).map((num) => (
-                                                    <option key={num} value={num}>
-                                                        {num}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                    </td>
-                                    <td style={{ padding: '8px' }}>
-                                        <div style={{ display: 'flex', gap: 6 }}>
-                                            <input
-                                                value={newPrescription.frequency.F}
-                                                onChange={(e) => handlePrescriptionChange(e, 'frequency', 'F')}
-                                                placeholder="F"
-                                                style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
-                                            /><button className='micBtn' onClick={() => startListening('frequency.F')}>🎤</button>
-                                        </div>
-                                    </td>
 
-                                    <td style={{ padding: '8px' }}>
-                                        <div style={{ display: 'flex', gap: 6 }}>
-                                            <input
-                                                value={newPrescription.frequency.A}
-                                                onChange={(e) => handlePrescriptionChange(e, 'frequency', 'A')}
-                                                placeholder="A"
-                                                style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
-                                            /><button className='micBtn' onClick={() => startListening('frequency.A')}>🎤</button>
-                                        </div>
-                                    </td>
-                                    <td style={{ padding: '8px' }}>
-                                        <div style={{ display: 'flex', gap: 6 }}>
-                                            <input
-                                                value={newPrescription.frequency.E}
-                                                onChange={(e) => handlePrescriptionChange(e, 'frequency', 'E')}
-                                                placeholder="E"
-                                                style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
-                                            /><button className='micBtn' onClick={() => startListening('frequency.E')}>🎤</button>
-                                        </div>
-                                    </td>
-                                    <td style={{ padding: '8px' }}>
-                                        <div style={{ display: 'flex', gap: 6 }}>
-                                            <input
-                                                value={newPrescription.frequency.N}
-                                                onChange={(e) => handlePrescriptionChange(e, 'frequency', 'N')}
-                                                placeholder="N"
-                                                style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
-                                            /><button className='micBtn' onClick={() => startListening('frequency.N')}>🎤</button>
-                                        </div>
-                                    </td>
-                                    <td style={{ padding: '8px', verticalAlign: 'middle' }}>
-                                        <div style={{ display: 'flex', gap: 6 }}>
-                                            {editingIdx !== null && (
-                                                <>
-                                                    <button
-                                                        onClick={handleUpdatePrescription}
-                                                        disabled={isPrescriptionUnchanged}
-                                                        style={{
-                                                            background: isPrescriptionUnchanged ? '#ccc' : '#0070f3',
-                                                            borderColor: isPrescriptionUnchanged ? '#ccc' : '#0070f3',
-                                                            border: '1px solid',
-                                                            borderRadius: 6,
-                                                            color: '#fff',
-                                                            cursor: isPrescriptionUnchanged ? 'not-allowed' : 'pointer',
-                                                            padding: '8px 14px',
-                                                        }}
-                                                    >
-                                                        Update
-                                                    </button>
-                                                    <button
-                                                        style={{
-                                                            background: '#fff',
-                                                            color: '#0070f3',
-                                                            borderRadius: 6,
-                                                            borderColor: '#0070f3',
-                                                            border: '1px solid #0070f3',
-                                                            padding: '8px 14px',
-                                                        }}
-                                                        onClick={handleCancelEditPrescription}
-                                                    >
-                                                        Cancel
-                                                    </button>
-                                                </>
-                                            )}
-                                            {editingIdx === null && (
-                                                <button
-                                                    style={PatientStyles.addButton}
-                                                    onClick={handleUpdatePrescription}
-                                                >
-                                                    Add
-                                                </button>
-                                            )}
-
-                                        </div>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                )} */}
-                {activeTab === 'meeting process' && (
+                {activeTab === 'meeting process' && (todaysAppointmentPackage.toLowerCase() === 'video call') && (
                     renderMeetingProcessUI()
                 )}
                 {activeTab === 'diagnostic' && (
@@ -3722,8 +3413,8 @@ export default function PatientDetail() {
                     renderPresentUI()
                 )}
 
-                {activeTab === 'next meetup' && (
-                    renderNextMeetupUI()
+                {activeTab === 'preview' && todaysAppointment && (
+                    renderPreviewUI()
                 )}
 
             </div>
@@ -3756,6 +3447,22 @@ export default function PatientDetail() {
                 pauseOnFocusLoss
                 draggable
                 pauseOnHover
+            />
+            <ConfirmationModal
+                position="top-right"
+                autoClose={3000}
+                hideProgressBar={false}
+                newestOnTop={false}
+                closeOnClick
+                rtl={false}
+                pauseOnFocusLoss
+                draggable
+                pauseOnHover
+                isOpen={isCheckoutConfirmModalOpen}
+                onClose={() => setIsCheckoutConfirmModalOpen(false)}
+                onConfirm={handleConfirmCheckout}
+                title="Patient checkout confirmation"
+                message="Are you sure to confirm the updates?"
             />
         </div >
     );

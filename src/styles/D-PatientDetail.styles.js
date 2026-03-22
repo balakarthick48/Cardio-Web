@@ -179,4 +179,45 @@ export const PatientStyles = {
         alignItems: 'center',
         padding: '5rem 0',
     },
+    previewContainer: {
+        border: '1px solid #0165FC',
+        borderRadius: '8px',
+        padding: '20px',
+        height: 'auto',
+        display: 'flex',
+        fontFamily: 'Arial, sans-serif',
+        marginTop: 64,
+    },
+    previewRow: {
+        display: 'flex',
+        marginBottom: '12px',
+        fontSize: '16px',
+        color: '#333'
+    },
+    previewLabel: {
+        fontWeight: 'bold',
+        color: '#4A5568',
+        width: '120px',
+        flexShrink: 0
+    },
+    previewValue: {
+        color: '#2D3748'
+    },
+    previewValueCapitalize: {
+        color: '#2D3748',
+        textTransform: 'capitalize'
+    },
+    previewLeftColumn: {
+        flex: 1,
+        paddingRight: '20px'
+    },
+    previewRightColumn: {
+        flex: 1,
+        paddingLeft: '20px'
+    },
+    previewDivider: {
+        width: '1.5px',
+        backgroundColor: '#0165FC',
+        alignSelf: 'stretch'
+    }
 };
