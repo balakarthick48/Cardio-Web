@@ -357,7 +357,6 @@ const Doctordashboard = () => {
                 setLoading(false);
                 return;
             }
-            let url = `${API_BASE_URL}patient/dashboard/monthly-counts?month=${month}&year=${year}`;
             console.log('Fetchingdashboard:', url);
             const response = await fetch(url, {
                 method: 'GET',
