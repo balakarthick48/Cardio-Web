@@ -6,6 +6,7 @@ export const URLConfigEnum = Object.freeze({
   PATIENT_VITAL_SIGNS: 'PATIENT_VITAL_SIGNS',
   PATIENT_VITAL_SIGNS_UPDATE: 'PATIENT_VITAL_SIGNS_UPDATE',
   PATIENT_PREVIEW: 'PATIENT_PREVIEW',
+  COMPLETE_APPOINTMENT: 'COMPLETE_APPOINTMENT'
 });
 
 // export const CMS_API_URL = 'https://api-cms.elevartechnologies.com/api/';
@@ -15,7 +16,8 @@ const URL_PATHS = {
   [URLConfigEnum.APPOINTMENT_HISTORY]: 'patient/appointment-history',
   [URLConfigEnum.PATIENT_VITAL_SIGNS]: 'patient/vitals-basic-get?patientId=',
   [URLConfigEnum.PATIENT_VITAL_SIGNS_UPDATE]: 'patient/vitals-basic',
-  [URLConfigEnum.PATIENT_PREVIEW]: 'patient/patient-appointment-preview'
+  [URLConfigEnum.PATIENT_PREVIEW]: 'patient/patient-appointment-preview',
+  [URLConfigEnum.COMPLETE_APPOINTMENT]: 'patient/appointments/checkout'
 };
 
 // Get the full URL for a given enum key

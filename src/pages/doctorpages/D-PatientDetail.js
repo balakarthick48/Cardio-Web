@@ -14,6 +14,7 @@ import { FREQUENCY_OPTIONS } from '../../configs/prescriptionConstants';
 import downloadIcon from '../../assets/images/download.png';
 import ConfirmationModal from '../../components/ConfirmationModal';
 import { PatientStyles } from '../../styles/D-PatientDetail.styles.js';
+import { setCompleteAppointment } from '../../api/patientCheckoutComplete';
 import URLConfigEnum, { getApiUrl } from '../../configs/urlConfig';
 
 const PatientTabListModel = [
@@ -648,10 +649,12 @@ export default function PatientDetail() {
             } else {
                 setError(data.message || 'Failed');
                 setLoading(false);
+                toast.error(data.message ?? 'Network error');
             }
         } catch (err) {
             setError('Network error');
             setLoading(false);
+            toast.error(err ?? 'Network error');
         }
     };
 
@@ -758,12 +761,21 @@ export default function PatientDetail() {
             toast.error('Please add at least one family history record');
             return;
         }
+        if (!todaysAppointment) {
+            toast.error('No appointment found for today');
+            return;
+        }
+        if (!patientId) {
+            toast.error('Patient ID not found');
+            return;
+        }
 
         setLoading(true);
 
         try {
             const body = {
                 patientId: Number(patientId),
+                appointmentId: todaysAppointment,
                 records: [
                     {
                         condition_name: newFamilyEntry.condition_name,
@@ -957,7 +969,7 @@ export default function PatientDetail() {
             setError('Network erroaa');
         } finally {
             setLoading(false);
-            getPrescriptions();            
+            getPrescriptions();
         }
     };
 
@@ -1259,10 +1271,24 @@ export default function PatientDetail() {
         setLoading(false);
     };
 
-    const handleConfirmCheckout = () => {
+    const handleConfirmCheckout = async () => {
         // This method is intentionally left empty for now, as per the request.
         setIsCheckoutConfirmModalOpen(false);
+        if (todaysAppointment && patientId) {
+            try {
+                const data = await setCompleteAppointment(todaysAppointment, patientId);
+                if (data) {
+                    toast.success('Appointment completed successfully');
+                }
+            } catch (error) {
+                console.error('Error completing appointment:', error);
+                toast.error('Failed to complete appointment');
+            }
+        } else {
+            toast.warning('No appointment/patient ID found for today');
+        }
     };
+
     // Example state for vital signs and basic data
     const [vitalSigns, setVitalSigns] = useState({
         temperature: '',
@@ -3316,7 +3342,7 @@ export default function PatientDetail() {
                     <div style={PatientStyles.tabsContainer}>
                         {PatientTabListModel.sort((a, b) => a.index - b.index).map((tab) => {
                             const active = activeTab === tab.name;
-                            if (tab.name === 'meeting process' && packageType !== 'video call') {
+                            if (tab.name === 'meeting process' && todaysAppointmentPackage !== 'video call') {
                                 return <div key={'meeting-process-empty'}></div>;
                             }
                             if (tab.name === 'preview' && (!todaysAppointment && !previewData)) {
