@@ -37,6 +37,7 @@ const AdminAppoinment = () => {
     const [selectedCardTime, setSelectedCardTime] = useState(''); // NEW
     const [to, setTo] = useState([]);
     const [updateappointment, setUpdateappointment] = useState([]);
+    const [completeappointment, setCompleteappointment] = useState([]);
     const [checkin, setCheckin] = useState([]);
     const [emergencyAppointment, setEmergencyAppointment] = useState([]);
     
@@ -209,6 +210,36 @@ const getTodayDate = () => {
                 setError(data.message || 'Failed');
             }
             // console.log('prescriptions___', data.existingMedicines);
+        } catch (err) {
+            toast.error('Network error');
+            setError('Network error');
+        }
+        setLoading(false);
+    };
+
+     const getCompletepointment = async (appointmentId, status) => {
+        if (!appointmentId || !status) return;
+        setLoading(true);
+        setError('');
+        try {
+            let url = `${API_BASE_URL}patient/update-appointment-status`;
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ appointmentId, status })
+            });
+            const data = await response.json();
+            if (response.ok) {
+                setCompleteappointment(data);
+                toast.success(data.message || `Appointment., ${status}d`);
+                getAppointment();
+                setSelectedCard(null);
+                setSelectedCardTime('');
+            } else {
+                setCompleteappointment([]);
+                toast.error(data.message || 'Failed to update appointment//');
+                setError(data.message || 'Failed');
+            }
         } catch (err) {
             toast.error('Network error');
             setError('Network error');
@@ -715,6 +746,24 @@ console.log('appointment>>><<<', appointment);
                                 >
                                     {loading ? 'Processing...' : 'Cancel Appointment'}
                                 </button>
+                                <button
+                                    style={{
+                                        marginTop: 24,
+                                        background: '#055614',
+                                        color: '#fff',
+                                        borderRadius: 8,
+                                        padding: '8px 32px',
+                                        border: 'none',
+                                        fontWeight: 500,
+                                        fontSize: '1rem',
+                                        marginRight: 12
+                                    }}
+                                    onClick={() => getCompletepointment(selectedCard.id, 'complete')}
+                                    disabled={loading}
+                                >
+                                    {loading ? 'Processing...' : 'Complete'}
+                                </button>
+
                                 <button
                                     style={{
                                         marginTop: 24,
