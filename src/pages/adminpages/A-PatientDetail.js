@@ -37,7 +37,7 @@ const PatientEatingTypeDropdownModel = [
     { index: 1, value: 'chewing', displayTitle: 'Chewing' },
 ];
 
-export default function AdminPatientDetail() {
+export default function PatientDetail() {
     const location = useLocation();
     const { patientId, email, mobile, address, name, appointmentId, packageType } = location.state || {};
     // const patientIdFromState = location.state?.patientId || null;
@@ -153,15 +153,8 @@ export default function AdminPatientDetail() {
         } else {
             setNewPrescription(prev => {
                 const updated = { ...prev };
-
                 if (activeSpeechField === "medicineName") {
                     updated.medicineName = transcript;
-                } else if (activeSpeechField.startsWith("frequency.")) {
-                    const key = activeSpeechField.split(".")[1];
-                    updated.frequency = {
-                        ...prev.frequency,
-                        [key]: transcript
-                    };
                 }
                 return updated;
             });
@@ -248,6 +241,12 @@ export default function AdminPatientDetail() {
         if (freqObj.AF) labels.push('AF');
 
         return labels.length ? labels.join(', ') : '-';
+    };
+
+    const capitalizeFirstChar = (value) => {
+        if (typeof value !== 'string') return value ?? 'None';
+        if (!value) return 'None';
+        return value.charAt(0).toUpperCase() + value.slice(1);
     };
 
     const handleSymptomDateChange = (date) => {
@@ -356,9 +355,12 @@ export default function AdminPatientDetail() {
     const [newPrescription, setNewPrescription] = useState({
         medicineName: '',
         quantity: 1,
-        frequency: { F: '', A: '', E: '', N: '' },
+        frequency_A: 0,
+        frequency_E: 0,
+        frequency_F: 0,
+        frequency_N: 0,
         dosageTiming: 'after_food',
-        eatingType: 'normal'
+        eatingType: 'normal',
     });
     const [editingIdx, setEditingIdx] = useState(null);
 
@@ -367,26 +369,24 @@ export default function AdminPatientDetail() {
         prescriptions[editingIdx] &&
         newPrescription.medicineName === prescriptions[editingIdx].medicine_name &&
         String(newPrescription.quantity) === String(prescriptions[editingIdx].quantity) &&
-        newPrescription.frequency.F === prescriptions[editingIdx].frequency_F &&
-        newPrescription.frequency.A === prescriptions[editingIdx].frequency_A &&
-        newPrescription.frequency.E === prescriptions[editingIdx].frequency_E &&
-        newPrescription.frequency.N === prescriptions[editingIdx].frequency_N &&
+        newPrescription.frequency_F === prescriptions[editingIdx].frequency_F &&
+        newPrescription.frequency_A === prescriptions[editingIdx].frequency_A &&
+        newPrescription.frequency_E === prescriptions[editingIdx].frequency_E &&
+        newPrescription.frequency_N === prescriptions[editingIdx].frequency_N &&
         newPrescription.dosageTiming === prescriptions[editingIdx].dosageTiming &&
         newPrescription.eatingType === prescriptions[editingIdx].eatType;
 
-    const handlePrescriptionChange = (e, field, freqField) => {
+    const isValidPrescription =
+        newPrescription.medicineName.trim() !== '' &&
+        prescriptions.find(p => p.medicine_name.toLowerCase() === newPrescription.medicineName.trim().toLowerCase()) === undefined &&
+        (Number(newPrescription.frequency_F) > 0 || Number(newPrescription.frequency_A) > 0 || Number(newPrescription.frequency_E) > 0 || Number(newPrescription.frequency_N) > 0);
+    console.log('isValidPrescription', isValidPrescription);
+    const handlePrescriptionChange = (e, field) => {
         const value = e.target.value;
-        if (field === 'frequency') {
-            setNewPrescription((prev) => ({
-                ...prev,
-                frequency: { ...prev.frequency, [freqField]: value }
-            }));
-        } else {
-            setNewPrescription((prev) => ({
-                ...prev,
-                [field]: value
-            }));
-        }
+        setNewPrescription((prev) => ({
+            ...prev,
+            [field]: value
+        }));
     };
 
     const handleEditPrescription = (idx) => {
@@ -394,21 +394,21 @@ export default function AdminPatientDetail() {
         if (!prescriptionToEdit) return;
         setEditingIdx(idx);
         setNewPrescription({
+            id: prescriptionToEdit.id,
             medicineName: prescriptionToEdit.medicine_name,
             quantity: prescriptionToEdit.quantity,
-            frequency: {
-                F: prescriptionToEdit.frequency_F,
-                A: prescriptionToEdit.frequency_A,
-                E: prescriptionToEdit.frequency_E,
-                N: prescriptionToEdit.frequency_N
-            },
+            frequency_F: prescriptionToEdit.frequency_F,
+            frequency_A: prescriptionToEdit.frequency_A,
+            frequency_E: prescriptionToEdit.frequency_E,
+            frequency_N: prescriptionToEdit.frequency_N,
             dosageTiming: prescriptionToEdit.dosageTiming,
-            eatingType: prescriptionToEdit.eatType,
+            eatingType: prescriptionToEdit.type,
         });
         setTimeout(() => {
             medicineNameInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
             medicineNameInputRef.current?.focus();
         }, 0);
+        console.log("Prescription to edit", prescriptionToEdit);
     };
 
     const handleRemovePrescription = async (idx) => {
@@ -459,7 +459,10 @@ export default function AdminPatientDetail() {
         setNewPrescription({
             medicineName: '',
             quantity: 1, // Reset to a default quantity like 1
-            frequency: { F: '', A: '', E: '', N: '' },
+            frequency_F: 0,
+            frequency_A: 0,
+            frequency_E: 0,
+            frequency_N: 0,
             dosageTiming: 'after_food',
             eatingType: 'normal'
         });
@@ -605,27 +608,35 @@ export default function AdminPatientDetail() {
     };
 
     const handleUpdatePrescription = async () => {
+        console.log("Update Started", editingIdx)
+        console.log("Update Started", newPrescription)
+    }
+
+    const handleAddNewPrescription = async () => {
+        if (!todaysAppointment) {
+            return;
+        }
         setLoading(true);
         setError('');
         try {
             let url = `${API_BASE_URL}con/upsert-prescriptions`;
             const body = {
                 patientId: patientId,
+                appointmentId: todaysAppointment,
                 prescription: [
                     {
                         medicineName: newPrescription.medicineName,
                         quantity: newPrescription.quantity,
-                        frequency: {
-                            F: newPrescription.frequency.F,
-                            A: newPrescription.frequency.A,
-                            E: newPrescription.frequency.E,
-                            N: newPrescription.frequency.N
-                        },
+                        frequency_A: Number(newPrescription.frequency_A) ?? 0,
+                        frequency_E: Number(newPrescription.frequency_E) ?? 0,
+                        frequency_F: Number(newPrescription.frequency_F) ?? 0,
+                        frequency_N: Number(newPrescription.frequency_N) ?? 0,
                         dosageTiming: newPrescription.dosageTiming,
-                        eatType: newPrescription.eatingType
+                        type: newPrescription.eatingType
                     }
                 ]
             };
+            console.log('Body', JSON.stringify(body))
             const bodyJSON = JSON.stringify(body)
             const response = await fetch(url, {
                 method: 'POST',
@@ -642,7 +653,10 @@ export default function AdminPatientDetail() {
                 setNewPrescription({
                     medicineName: '',
                     quantity: 1, // Reset to a default quantity like 1
-                    frequency: { F: '', A: '', E: '', N: '' },
+                    frequency_A: '',
+                    frequency_E: '',
+                    frequency_F: '',
+                    frequency_N: '',
                     dosageTiming: 'after_food',
                     eatingType: 'normal'
                 });
@@ -652,6 +666,7 @@ export default function AdminPatientDetail() {
                 toast.error(data.message ?? 'Network error');
             }
         } catch (err) {
+            console.log('Error updating prescription:', err);
             setError('Network error');
             setLoading(false);
             toast.error(err ?? 'Network error');
@@ -1194,18 +1209,18 @@ export default function AdminPatientDetail() {
         }
         try {
             const url = new URL(getApiUrl(URLConfigEnum.PATIENT_PREVIEW, patientId, appointmentId));
-            console.log('URLString patient', url);
-            console.log('vitals url:', url);
+            console.log('URLString patient preview', url.toString());
             const response = await fetch(url, {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' }
             });
             const data = await response.json();
+            console.log('URLString patient preview response', data);
             if (response.ok) {
                 setPreviewData(data.data);
             }
         } catch (err) {
-            console.error('Error fetching symptoms:', err);
+            console.error('Error fetching patient preview:', err);
             setError('Network error');
         }
         setLoading(false);
@@ -2237,6 +2252,22 @@ export default function AdminPatientDetail() {
         )
     };
 
+    const getPrescriptionFrequency = (med, fType = 'forenoon' | 'afternoon' | 'evening' | 'night') => {
+        switch (fType) {
+            case 'forenoon': return (med.frequency_F) || '0';
+            case 'afternoon': return (med.frequency_A) || '0';
+            case 'evening': return (med.frequency_E) || '0';
+            case 'night': return (med.frequency_N) || '0';
+            default: return '0';
+        }
+    }
+
+    const getTiming = (med) => {
+        if (!med) {
+            return 'N/A';
+        }
+        return med.dosage_timing === 'after_food' ? 'After Food' : 'Before Food';
+    }
     const renderPrescriptionUI = () => {
         return (
             <div className="patient-section" ref={prescriptionRef} style={{ position: 'relative' }}>
@@ -2276,12 +2307,12 @@ export default function AdminPatientDetail() {
                                 <td style={PatientStyles.tableCellViewSmall}> <div className='tdDivLeft'>{idx + 1 < 10 ? `0${idx + 1}.` : `${idx + 1}.`}</div></td>
                                 <td> <div className='tdDivLeft'>{med.medicine_name}</div></td>
                                 <td style={PatientStyles.tableCellViewSmall}><div className='tdDivMid'>{med.quantity}</div></td>
-                                <td style={PatientStyles.tableCellViewMid}><div className='tdDivMid'>{med.frequency_F ?? 'None'}</div></td>
-                                <td style={PatientStyles.tableCellViewMid}><div className='tdDivMid'>{med.frequency_A ?? 'None'}</div></td>
-                                <td style={PatientStyles.tableCellViewMid}><div className='tdDivMid'>{med.frequency_E ?? 'None'}</div></td>
-                                <td style={PatientStyles.tableCellViewMid}><div className='tdDivMid'>{med.frequency_N ?? 'None'}</div></td>
-                                <td style={PatientStyles.tableCellViewNormal}><div className='tdDivMid'>{med.dosageTiming ?? 'None'}</div></td>
-                                <td style={PatientStyles.tableCellViewNormal}><div className='tdDivMid'>{med.eatType ?? 'None'}</div></td>
+                                <td style={PatientStyles.tableCellViewMid}><div className='tdDivMid'>{getPrescriptionFrequency(med, 'forenoon')}</div></td>
+                                <td style={PatientStyles.tableCellViewMid}><div className='tdDivMid'>{getPrescriptionFrequency(med, 'afternoon')}</div></td>
+                                <td style={PatientStyles.tableCellViewMid}><div className='tdDivMid'>{getPrescriptionFrequency(med, 'evening')}</div></td>
+                                <td style={PatientStyles.tableCellViewMid}><div className='tdDivMid'>{getPrescriptionFrequency(med, 'night')}</div></td>
+                                <td style={PatientStyles.tableCellViewNormal}><div className='tdDivMid'>{getTiming(med)}</div></td>
+                                <td style={PatientStyles.tableCellViewNormal}><div className='tdDivMid'>{capitalizeFirstChar(med.type)}</div></td>
                                 {getPrescriptionDateTitle(selectedPrescriptionDate) === 'Today' && (
                                     <td style={PatientStyles.tableCellAction}>
                                         <button
@@ -2349,8 +2380,8 @@ export default function AdminPatientDetail() {
                                 <td style={{ padding: '8px' }}>
                                     <div style={{ display: 'flex', gap: 6 }}>
                                         <select
-                                            value={newPrescription.frequency.F}
-                                            onChange={(e) => handlePrescriptionChange(e, 'frequency', 'F')}
+                                            value={newPrescription.frequency_F}
+                                            onChange={(e) => handlePrescriptionChange(e, 'frequency_F')}
                                             style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
                                         >
                                             {FREQUENCY_OPTIONS.map((num) => (
@@ -2364,8 +2395,8 @@ export default function AdminPatientDetail() {
                                 <td style={{ padding: '8px' }}>
                                     <div style={{ display: 'flex', gap: 6 }}>
                                         <select
-                                            value={newPrescription.frequency.A}
-                                            onChange={(e) => handlePrescriptionChange(e, 'frequency', 'A')}
+                                            value={newPrescription.frequency_A}
+                                            onChange={(e) => handlePrescriptionChange(e, 'frequency_A')}
                                             style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
                                         >
                                             {FREQUENCY_OPTIONS.map((num) => (
@@ -2379,8 +2410,8 @@ export default function AdminPatientDetail() {
                                 <td style={{ padding: '8px' }}>
                                     <div style={{ display: 'flex', gap: 6 }}>
                                         <select
-                                            value={newPrescription.frequency.E}
-                                            onChange={(e) => handlePrescriptionChange(e, 'frequency', 'E')}
+                                            value={newPrescription.frequency_E}
+                                            onChange={(e) => handlePrescriptionChange(e, 'frequency_E')}
                                             style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
                                         >
                                             {FREQUENCY_OPTIONS.map((num) => (
@@ -2394,8 +2425,8 @@ export default function AdminPatientDetail() {
                                 <td style={{ padding: '8px' }}>
                                     <div style={{ display: 'flex', gap: 6 }}>
                                         <select
-                                            value={newPrescription.frequency.N}
-                                            onChange={(e) => handlePrescriptionChange(e, 'frequency', 'N')}
+                                            value={newPrescription.frequency_N}
+                                            onChange={(e) => handlePrescriptionChange(e, 'frequency_N')}
                                             style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
                                         >
                                             {FREQUENCY_OPTIONS.map((num) => (
@@ -2462,8 +2493,14 @@ export default function AdminPatientDetail() {
                                         )}
                                         {editingIdx === null && (
                                             <button
-                                                style={PatientStyles.addButton}
-                                                onClick={handleUpdatePrescription}
+                                                style={{
+                                                    ...PatientStyles.addButton,
+                                                    background: !isValidPrescription ? '#ccc' : '#0070f3',
+                                                    border: `1px solid ${!isValidPrescription ? '#ccc' : '#0070f3'}`,
+                                                    cursor: !isValidPrescription ? 'not-allowed' : 'pointer',
+                                                }}
+                                                disabled={!isValidPrescription}
+                                                onClick={handleAddNewPrescription}
                                             >
                                                 Add
                                             </button>
