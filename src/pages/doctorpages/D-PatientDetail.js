@@ -836,8 +836,15 @@ export default function PatientDetail() {
     // console.log("familyHistoryData||||:", familyHistoryData);
 
     const getInsertVitalSigns = async () => {
+        if (!todaysAppointment) {
+            toast.error ('No appointment found for today');
+            return;
+        }
+        if (!patientId) {
+            toast.error('Patient ID not found');
+            return;
+        }
         setLoading(true);
-
         try {
             const body = {
                 patientId: patientId,
@@ -848,8 +855,8 @@ export default function PatientDetail() {
                 age: basicData.age,
                 height: basicData.height,
                 weight: basicData.weight,
-                bmi: basicData.bmi
-
+                bmi: basicData.bmi,
+                appointmentId: todaysAppointment
             };
 
             console.log("Payload####:", body);
@@ -902,7 +909,16 @@ export default function PatientDetail() {
             if (response.ok && data.data && Array.isArray(data.data)) {
                 console.log('<<<<<<>>>>//', response);
                 const sortedVitals = data.data.sort((a, b) => new Date(b.dateOfRecord) - new Date(a.dateOfRecord));
-                setVitalSignsData(sortedVitals);
+                // remove the duplicates
+                const uniqueVitals = [];
+                const seenDates = new Set();
+                sortedVitals.forEach(vital => {
+                    if (!seenDates.has(vital.dateOfRecord)) {
+                        uniqueVitals.push(vital);
+                        seenDates.add(vital.dateOfRecord);
+                    }
+                })
+                setVitalSignsData(uniqueVitals);
                 if (sortedVitals.length > 0) {
                     const firstData = sortedVitals[0];
                     setselectedVitalSign(firstData);
