@@ -229,14 +229,14 @@ const PatientList = () => {
         try {
             // let url = `${API_BASE_URL}patient/getAllPatientDetails`;
             let url = `${API_BASE_URL}patient/getallpatientdetailsAll?month=${selectedMonth}&year=${selectedYear}`;
-            console.log('FetchingLLLLL:', url);
-            const response = await fetch(url, {
+            const requestOptions = {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' },
-            });
-            console.log('Response status:', response.status);
+            };
+            console.log('Requesting:', { url, options: requestOptions });
+            const response = await fetch(url, requestOptions);
             const data = await response.json();
-            console.log('patients response:', data);
+            console.log('Response:', { url, options: requestOptions, response: data });
             if (response.ok) {
                 setPatients(data.data);
             } else {

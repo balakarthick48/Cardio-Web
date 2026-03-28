@@ -10,8 +10,10 @@ import html2canvas from 'html2canvas-pro';
 import jsPDF from 'jspdf';
 import SpeechToTextModal from '../../components/SpeechToTextModal';
 import { useLocation } from 'react-router-dom';
+import CenteredLoader from '../../components/CenteredLoader';
 import { FREQUENCY_OPTIONS } from '../../configs/prescriptionConstants';
 import downloadIcon from '../../assets/images/download.png';
+import saveIcon from '../../assets/images/save-icon.png';
 import ConfirmationModal from '../../components/ConfirmationModal';
 import { PatientStyles } from '../../styles/D-PatientDetail.styles.js';
 import { setCompleteAppointment } from '../../api/patientCheckoutComplete';
@@ -363,6 +365,7 @@ export default function PatientDetail() {
         eatingType: 'normal',
     });
     const [editingIdx, setEditingIdx] = useState(null);
+    const [editingIndex, setEditingIndex] = useState(null);
 
     const isPrescriptionUnchanged =
         editingIdx !== null &&
@@ -389,10 +392,12 @@ export default function PatientDetail() {
         }));
     };
 
-    const handleEditPrescription = (idx) => {
-        const prescriptionToEdit = prescriptions[idx];
+    const handleEditPrescription = (prescriptionID, indexId) => {
+        console.log("Edit tapped", prescriptionID);
+        const prescriptionToEdit = prescriptions.find(p => p.id === prescriptionID);
         if (!prescriptionToEdit) return;
-        setEditingIdx(idx);
+        setEditingIdx(prescriptionID);
+        setEditingIndex(indexId);
         setNewPrescription({
             id: prescriptionToEdit.id,
             medicineName: prescriptionToEdit.medicine_name,
@@ -411,34 +416,37 @@ export default function PatientDetail() {
         console.log("Prescription to edit", prescriptionToEdit);
     };
 
-    const handleRemovePrescription = async (idx) => {
-        setPrescriptionToDelete(idx);
+    const handleRemovePrescription = async (prescriptionID, idx) => {
+        setPrescriptionToDelete(prescriptionID);
         setIsConfirmModalOpen(true);
     };
 
     const confirmRemovePrescription = async () => {
         if (prescriptionToDelete === null) return;
 
-        const prescriptionToRemove = prescriptions[prescriptionToDelete];
+        const prescriptionToRemove = prescriptions.find(p => p.id === prescriptionToDelete);
         if (!prescriptionToRemove) {
             setIsConfirmModalOpen(false);
             setPrescriptionToDelete(null);
             return;
         }
-
+        setLoading(true);
+        setError('');
         const body = {
-            patientId: patientId,
-            prescriptionId: prescriptionToRemove.prescription_id,
+            prescription_id: prescriptionToDelete,
+            patient_id: patientId,
         };
-        const bodyJSON = JSON.stringify(body);
         try {
-            let url = `${API_BASE_URL}con/remove-prescription`;
-            const response = await fetch(url, {
+            let url = getApiUrl(URLConfigEnum.DELETE_PRESCRIPTIONS);
+            const requestOptions = {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: bodyJSON,
-            });
+                body: JSON.stringify(body),
+            };
+            console.log('Requesting:', { url, body });
+            const response = await fetch(url, requestOptions);
             const data = await response.json();
+            console.log('Response:', { url, body, response: data });
             if (response.ok) {
                 toast.success(data.message);
                 getPrescriptions();
@@ -449,6 +457,7 @@ export default function PatientDetail() {
             toast.error('Network error');
         } finally {
             // Close modal and reset state
+            setLoading(false);
             setIsConfirmModalOpen(false);
             setPrescriptionToDelete(null);
         }
@@ -456,6 +465,7 @@ export default function PatientDetail() {
 
     const handleCancelEditPrescription = () => {
         setEditingIdx(null);
+        setEditingIndex(null);
         setNewPrescription({
             medicineName: '',
             quantity: 1, // Reset to a default quantity like 1
@@ -476,16 +486,16 @@ export default function PatientDetail() {
         try {
             let url = `${API_BASE_URL}con/upsert-prescriptions`;
             // url = 'https://mocki.io/v1/a5a086db-eb2d-40e6-98af-1181da3215af'
-            const body = JSON.stringify({ patientId: patientId })
-            console.log('prescriptions url:', url, 'body', body);
-            const response = await fetch(url, {
+            const body = { patientId: patientId };
+            const requestOptions = {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: body
-            });
+                body: JSON.stringify(body)
+            };
+            console.log('Requesting:', { url, body });
+            const response = await fetch(url, requestOptions);
             const data = await response.json();
-            console.log('prescriptionsrespon######:', data);
-            console.log('todaysAppointment', todaysAppointment);
+            console.log('Response:', { url, body, response: data });
             if (response.ok && Array.isArray(data.existingMedicines)) {
                 const medicines = data.existingMedicines;
                 // setPrescriptions(medicines); // Keep the flat list for editing/adding
@@ -514,7 +524,6 @@ export default function PatientDetail() {
                 setPrescriptions([]);
                 setError(data.message || 'Failed');
             }
-            console.log('prescriptions___', data.existingMedicines);
             setLoading(false);
         } catch (err) {
             setError('Network error');
@@ -532,7 +541,6 @@ export default function PatientDetail() {
         try {
             let url = `${API_BASE_URL}admin/process-meeting`;
             // url = 'https://mocki.io/v1/a5a086db-eb2d-40e6-98af-1181da3215af'
-            console.log('process meeting url:', url);
             const meetingId = String(meetingIdInput).trim();
             const patientId = String(patientIdInput).trim();
             const body = {
@@ -541,16 +549,15 @@ export default function PatientDetail() {
                 patientId,
                 doctorId: 5
             };
-            console.log('process meeting payload:', body);
-            const response = await fetch(url, {
+            const requestOptions = {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body)
-            });
-            console.log('Response statusmeeting:', response.status);
+            };
+            console.log('Requesting:', { url, body });
+            const response = await fetch(url, requestOptions);
             const data = await response.json();
-            console.log('meetingprocess response??????<<<<:', data);
-            console.log('mMPMSGGG>>>>>>:', data.message);
+            console.log('Response:', { url, body, response: data });
             if (response.ok) {
                 setMeetingprocess(data);
                 toast.success(data.message);
@@ -558,7 +565,6 @@ export default function PatientDetail() {
                 setMeetingprocess([]);
                 setError(data.message || 'Failed');
             }
-            console.log('Meetingprocess==___', data);
         } catch (err) {
             setError('Network error');
         }
@@ -574,25 +580,14 @@ export default function PatientDetail() {
         setError('');
         try {
             let url = `${API_BASE_URL}patient/meeting-details?meetingId=${encodeURIComponent(meetingIdInput)}&patientId=${encodeURIComponent(patientIdInput)}&language=${encodeURIComponent(languageOption)}`;
-            console.log('process meeting url:', url);
-            // const meetingId = String(meetingIdInput).trim();
-            // const patientId = String(patientIdInput).trim();
-            // const body = {
-            //     meetingId,
-            //     language: languageOption,
-            //     patientId,
-            //     doctorId: 5
-            // };
-            // console.log('process meeting payload:', body);
-            const response = await fetch(url, {
+            const requestOptions = {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' },
-                // body: JSON.stringify(body)
-            });
-            console.log('Response statusmeeting:', response.status);
+            };
+            console.log('Requesting:', { url, options: requestOptions });
+            const response = await fetch(url, requestOptions);
             const data = await response.json();
-            console.log('meetingprocess response??????<<<<:', data);
-            console.log('mMPMSGGG>>>>>>:', data.message);
+            console.log('Response:', { url, options: requestOptions, response: data });
             if (response.ok) {
                 setMeetingprocess(data);
                 toast.success(data.message);
@@ -600,7 +595,6 @@ export default function PatientDetail() {
                 setMeetingprocess([]);
                 setError(data.message || 'Failed');
             }
-            console.log('Meetingprocess==___', data);
         } catch (err) {
             setError('Network error');
         }
@@ -608,8 +602,46 @@ export default function PatientDetail() {
     };
 
     const handleUpdatePrescription = async () => {
-        console.log("Update Started", editingIdx)
-        console.log("Update Started", newPrescription)
+        if (!patientId && !todaysAppointment && !editingIdx && !newPrescription) {
+            return;
+        }
+        const url = getApiUrl('UPDATE_PRESCRIPTIONS');
+        const body = {
+            "patient_id": patientId,
+            "prescription_id": editingIdx,
+            "prescription_data": {
+                "medicine_name": newPrescription.medicineName,
+                "quantity": newPrescription.quantity,
+                "frequency_A": Number(newPrescription.frequency_A) ?? 0,
+                "frequency_E": Number(newPrescription.frequency_E) ?? 0,
+                "frequency_F": Number(newPrescription.frequency_F) ?? 0,
+                "frequency_N": Number(newPrescription.frequency_N) ?? 0,
+                "dosageTiming": newPrescription.dosageTiming,
+                "type": newPrescription.eatingType
+            }
+        }
+        const requestOptions = {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        };
+        console.log('Requesting:', { url, body });
+        setLoading(true);
+        try {
+            const response = await fetch(url, requestOptions);
+            const data = await response.json();
+            console.log('Response:', { url, body, response: data });
+            if (response.ok && data.message.toLowerCase().includes('success')) {
+                toast.success(data.message);
+                getPrescriptions();
+            } else {
+                toast.error(data.message);
+            }
+        } catch (err) {
+            toast.error(err.message || 'Network error');
+        } finally {
+            setLoading(true);
+        }
     }
 
     const handleAddNewPrescription = async () => {
@@ -636,15 +668,15 @@ export default function PatientDetail() {
                     }
                 ]
             };
-            console.log('Body', JSON.stringify(body))
-            const bodyJSON = JSON.stringify(body)
-            const response = await fetch(url, {
+            const requestOptions = {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: bodyJSON
-            });
-            console.log('update prescription url:', url, 'body', bodyJSON);
+                body: JSON.stringify(body)
+            };
+            console.log('Requesting:', { url, body });
+            const response = await fetch(url, requestOptions);
             const data = await response.json();
+            console.log('Response:', { url, body, response: data });
             // Update prescriptions table with latest data from API
             if (response.ok) {
                 toast.success(data.message || 'Prescription updated successfully');
@@ -653,10 +685,10 @@ export default function PatientDetail() {
                 setNewPrescription({
                     medicineName: '',
                     quantity: 1, // Reset to a default quantity like 1
-                    frequency_A: '',
-                    frequency_E: '',
-                    frequency_F: '',
-                    frequency_N: '',
+                    frequency_A: 0,
+                    frequency_E: 0,
+                    frequency_F: 0,
+                    frequency_N: 0,
                     dosageTiming: 'after_food',
                     eatingType: 'normal'
                 });
@@ -678,14 +710,14 @@ export default function PatientDetail() {
         setError('');
         try {
             let url = `${API_BASE_URL}patient/getallpatientdetailsAll`;
-            console.log('FetchingLLLLL:', url);
-            const response = await fetch(url, {
+            const requestOptions = {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' },
-            });
-            console.log('Response status:', response.status);
+            };
+            console.log('Requesting:', { url, options: requestOptions });
+            const response = await fetch(url, requestOptions);
             const data = await response.json();
-            console.log('patients response:', data);
+            console.log('Response:', { url, options: requestOptions, response: data });
             if (response.ok) {
                 setPatients(data.data);
             } else {
@@ -701,14 +733,14 @@ export default function PatientDetail() {
         setError('');
         try {
             let url = `${API_BASE_URL}patient/family-history-get?patientId=${patientId}`;
-            console.log('FetchingFHHHH:', url);
-            const response = await fetch(url, {
+            const requestOptions = {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' }
-            });
-            console.log('Response FH....:', response.status);
+            };
+            console.log('Requesting:', { url, options: requestOptions });
+            const response = await fetch(url, requestOptions);
             const data = await response.json();
-            console.log('family history response:', data);
+            console.log('Response:', { url, options: requestOptions, response: data });
             if (response.ok) {
                 setFamilyHistory(data.data);
             } else {
@@ -719,57 +751,6 @@ export default function PatientDetail() {
         }
         setLoading(false);
     };
-
-    //     const insertFamilyHistory = async () => {
-    //         if (!familyHistoryData || familyHistoryData.length === 0) {
-    //     toast.error('Please add at least one family history record');
-    //     setLoading(false);
-    //     return;
-    // }
-
-    //         setLoading(true);
-    //         setError('');
-    //         try {
-    //             let url = `${API_BASE_URL}patient/family-history`;
-    //             console.log('insertFHurl:', url);
-    //             const body = {
-    //                 patientId: patientId,
-    //                 records: familyHistoryData.map((item) => ({
-    //                     condition_name: item.condition_name,
-    //                     family_member: item.family_member,
-    //                     status: item.status
-    //                 }))
-    //             };
-    //             console.log('family history payload:', body);
-    //             const response = await fetch(url, {
-    //                 method: 'POST',
-    //                 headers: { 'Content-Type': 'application/json' },
-    //                 body: JSON.stringify(body)
-    //             });
-    //             console.log('insertfamily:', response.status);
-    //             // const data = await response.json();
-    //             let data;
-
-    // try {
-    //     data = await response.json();
-    // } catch {
-    //     data = { message: "Server response not JSON" };
-    // }
-    //             console.log('family history insertt response:', data);
-    //             if (response.ok) {
-    //                 toast.success(data.message || 'Family history updated successfully');
-    //                 setIsEditingFamilyHistory(data);
-    //                 // getfamilyHistory();
-    //             } else {
-    //                 setError(data.message || 'Failed to update family history');
-    //                 toast.error(data.message || 'Failed to update');
-    //             }
-    //         } catch (err) {
-    //             setError('Network error');
-    //             toast.error('Network error');
-    //         }
-    //         setLoading(false);
-    //     };
 
     const insertFamilyHistory = async (records = familyHistoryData) => {
         if (!records || records.length === 0) {
@@ -788,6 +769,7 @@ export default function PatientDetail() {
         setLoading(true);
 
         try {
+            const url = `${API_BASE_URL}patient/family-history`;
             const body = {
                 patientId: Number(patientId),
                 appointmentId: todaysAppointment,
@@ -800,16 +782,14 @@ export default function PatientDetail() {
                 ]
             };
 
-            console.log("Payload///:", body);
+            const requestOptions = {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            };
+            console.log('Requesting:', { url, body });
 
-            const response = await fetch(
-                `${API_BASE_URL}patient/family-history`,
-                {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(body)
-                }
-            );
+            const response = await fetch(url, requestOptions);
 
             let data;
             try {
@@ -817,6 +797,7 @@ export default function PatientDetail() {
             } catch {
                 data = {};
             }
+            console.log('Response:', { url, body, response: data });
 
             if (response.ok) {
                 toast.success('Family history updated successfully');
@@ -833,11 +814,10 @@ export default function PatientDetail() {
 
         setLoading(false);
     };
-    // console.log("familyHistoryData||||:", familyHistoryData);
 
     const getInsertVitalSigns = async () => {
         if (!todaysAppointment) {
-            toast.error ('No appointment found for today');
+            toast.error('No appointment found for today');
             return;
         }
         if (!patientId) {
@@ -846,6 +826,7 @@ export default function PatientDetail() {
         }
         setLoading(true);
         try {
+            const url = getApiUrl(URLConfigEnum.PATIENT_VITAL_SIGNS_UPDATE);
             const body = {
                 patientId: patientId,
                 temperature: vitalSigns.temperature,
@@ -859,15 +840,13 @@ export default function PatientDetail() {
                 appointmentId: todaysAppointment
             };
 
-            console.log("Payload####:", body);
-            const urlString = getApiUrl(URLConfigEnum.PATIENT_VITAL_SIGNS_UPDATE);
-            const response = await fetch(urlString,
-                {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(body)
-                }
-            );
+            const requestOptions = {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            };
+            console.log('Requesting:', { url, body });
+            const response = await fetch(url, requestOptions);
 
             let data;
             try {
@@ -875,6 +854,7 @@ export default function PatientDetail() {
             } catch {
                 data = {};
             }
+            console.log('Response:', { url, body, response: data });
 
             if (response.ok) {
                 toast.success('Vital signs updated successfully');
@@ -895,17 +875,15 @@ export default function PatientDetail() {
         setLoading(true);
         setError('');
         try {
-            const url = new URL(getApiUrl(URLConfigEnum.PATIENT_VITAL_SIGNS, patientId));
-            console.log('URLString patient', url);
-            console.log('vitals url:', url);
-            const response = await fetch(url, {
+            const url = getApiUrl(URLConfigEnum.PATIENT_VITAL_SIGNS, patientId);
+            const requestOptions = {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' }
-            });
-            console.log('vitals Response status:', response.status);
+            };
+            console.log('Requesting:', { url, options: requestOptions });
+            const response = await fetch(url, requestOptions);
             const data = await response.json();
-            console.log('vitals response:', data);
-
+            console.log('Response:', { url, options: requestOptions, response: data });
             if (response.ok && data.data && Array.isArray(data.data)) {
                 console.log('<<<<<<>>>>//', response);
                 const sortedVitals = data.data.sort((a, b) => new Date(b.dateOfRecord) - new Date(a.dateOfRecord));
@@ -913,16 +891,17 @@ export default function PatientDetail() {
                 const uniqueVitals = [];
                 const seenDates = new Set();
                 sortedVitals.forEach(vital => {
-                    if (!seenDates.has(vital.dateOfRecord)) {
+                    const datePart = vital.dateOfRecord.split('T')[0];
+                    if (!seenDates.has(datePart)) {
                         uniqueVitals.push(vital);
-                        seenDates.add(vital.dateOfRecord);
+                        seenDates.add(datePart);
                     }
-                })
+                });
                 setVitalSignsData(uniqueVitals);
-                if (sortedVitals.length > 0) {
-                    const firstData = sortedVitals[0];
+                if (uniqueVitals.length > 0) {
+                    const firstData = uniqueVitals[0];
                     setselectedVitalSign(firstData);
-                    if (getPrescriptionDateTitle(firstData.dateOfRecord) === 'Today') {
+                    if (getPrescriptionDateTitle(firstData.dateOfRecord.split('T')[0]) === 'Today') {
                         setVitalSigns(prev => (
                             {
                                 ...prev,
@@ -945,7 +924,7 @@ export default function PatientDetail() {
                             }
                         ))
                     } else if (todaysAppointment) {
-                        setupDefaultVitalForToday(sortedVitals)
+                        setupDefaultVitalForToday(uniqueVitals);
                     }
                 } else {
                     setupDefaultVitalForToday([])
@@ -969,14 +948,14 @@ export default function PatientDetail() {
         try {
             // let url = `${API_BASE_URL}doctor/getappointments`; //allapointment
             let url = `${API_BASE_URL}patient/getappointments?patientId=${patientId}`;
-            console.log('Fetching:', url);
-            const response = await fetch(url, {
+            const requestOptions = {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' }
-            });
-            console.log('Response status:', response.status);
+            };
+            console.log('Requesting:', { url, options: requestOptions });
+            const response = await fetch(url, requestOptions);
             const data = await response.json();
-            console.log('appointment...:', data);
+            console.log('Response:', { url, options: requestOptions, response: data });
             if (response.ok && data.data) {
                 const appointments = Array.isArray(data.data) ? data.data : [];
                 const todaysAppointmentForPatient = appointments.find((item) => item.slotDate === getTodayDate());
@@ -1039,13 +1018,14 @@ export default function PatientDetail() {
         setError('');
         try {
             let url = `${API_BASE_URL}patient/symptoms-get?patientId=${patientId}`;
-            console.log('symptoms url:', url);
-            const response = await fetch(url, {
+            const requestOptions = {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' }
-            });
+            };
+            console.log('Requesting:', { url, options: requestOptions });
+            const response = await fetch(url, requestOptions);
             const data = await response.json();
-            console.log('symptoms response:', data);
+            console.log('Response:', { url, options: requestOptions, response: data });
             if (response.ok && data.data && Array.isArray(data.data)) {
                 const symptoms = data.data;
                 const grouped = symptoms.reduce((acc, item) => {
@@ -1122,6 +1102,7 @@ export default function PatientDetail() {
         setLoading(true);
 
         try {
+            const url = `${API_BASE_URL}patient/symptoms`;
             const body = {
                 appoinment_id: symptomsFormData.appoinment_id,
                 patient_id: Number(patientId),
@@ -1133,16 +1114,14 @@ export default function PatientDetail() {
                 next_visit_date: symptomsFormData.nextVisitDate || ''
             };
 
-            console.log("Payloadsymptoms:", body);
+            const requestOptions = {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            };
+            console.log('Requesting:', { url, body });
 
-            const response = await fetch(
-                `${API_BASE_URL}patient/symptoms`,
-                {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(body)
-                }
-            );
+            const response = await fetch(url, requestOptions);
 
             let data;
             try {
@@ -1150,6 +1129,7 @@ export default function PatientDetail() {
             } catch {
                 data = {};
             }
+            console.log('Response:', { url, body, response: data });
 
             if (response.ok) {
                 toast.success('Symptoms updated successfully');
@@ -1171,11 +1151,14 @@ export default function PatientDetail() {
         setError('');
         try {
             let url = `${API_BASE_URL}patient/investigation-get?patientId=${patientId}`;
-            const response = await fetch(url, {
+            const requestOptions = {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' }
-            });
+            };
+            console.log('Requesting:', { url, options: requestOptions });
+            const response = await fetch(url, requestOptions);
             const data = await response.json();
+            console.log('Response:', { url, options: requestOptions, response: data });
 
             if (response.ok && Array.isArray(data.data)) {
                 const investigations = data.data;
@@ -1224,14 +1207,15 @@ export default function PatientDetail() {
             return;
         }
         try {
-            const url = new URL(getApiUrl(URLConfigEnum.PATIENT_PREVIEW, patientId, appointmentId));
-            console.log('URLString patient preview', url.toString());
-            const response = await fetch(url, {
+            const url = getApiUrl(URLConfigEnum.PATIENT_PREVIEW, patientId, appointmentId);
+            const requestOptions = {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' }
-            });
+            };
+            console.log('Requesting:', { url, options: requestOptions });
+            const response = await fetch(url, requestOptions);
             const data = await response.json();
-            console.log('URLString patient preview response', data);
+            console.log('Response:', { url, options: requestOptions, response: data });
             if (response.ok) {
                 setPreviewData(data.data);
             }
@@ -1264,6 +1248,7 @@ export default function PatientDetail() {
         setLoading(true);
 
         try {
+            const url = `${API_BASE_URL}patient/investigation-post`;
             const formData = new FormData();
 
             formData.append("patientId", Number(patientId));
@@ -1631,11 +1616,14 @@ export default function PatientDetail() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [patientId, todaysAppointment]);
 
-    const headerTable = (title, ref, filename, headerTitle) => {
+    const headerTable = ({ title, ref, filename, headerTitle, saveButtonTitle, saveAction }) => {
         return (
             <div style={{ flexDirection: 'row', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <h3>{headerTitle}</h3>
-                {downloadButtonUI(title, ref, filename)}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, height: 24, marginBottom: 24 }}>
+                    {saveButtonTitle && saveButtonTitle !== '' && saveButtonUI(title, ref, filename, saveAction)}
+                    {downloadButtonUI(title, ref, filename)}
+                </div>
             </div>
         )
     };
@@ -1660,6 +1648,27 @@ export default function PatientDetail() {
             </button>
         )
     };
+    const saveButtonUI = (saveBtnTitle, ref, filename, saveAction) => {
+        return (
+            <button
+                className="pdf-btn"
+                title={saveBtnTitle}
+                // onClick={() => exportSectionToPDF(prescriptionRef, 'Prescription.pdf')}
+                onClick={saveAction}
+                style={{
+                    ...PatientStyles.pdfBtn
+                }}
+            >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, height: 24 }}>
+                    <div>
+                        <label>Save</label>
+                    </div>
+                    <img src={saveIcon} alt="Save" style={{ width: 16, height: 16 }} />
+                </div>
+            </button>
+        )
+    };
+
     const getTodayDate = () => {
         const today = new Date();
 
@@ -1781,7 +1790,7 @@ export default function PatientDetail() {
         return (
             <>
                 <div style={PatientStyles.vitalsSummaryHeader}>
-                    {headerTable('Download vital signs as PDF', vitalRef, 'VitalSigns.pdf', '')}
+                    {headerTable({ title: 'Download vital signs as PDF', ref: vitalRef, filename: 'VitalSigns.pdf', headerTitle: '', saveButtonTitle: 'Save', saveAction: getInsertVitalSigns })}
                 </div>
                 <div className="patient-section grid-2" style={PatientStyles.relative}>
                     <div className="card">
@@ -1955,7 +1964,7 @@ export default function PatientDetail() {
                                 </>
                             )}
                         </p>
-                        <button className="done-btn" onClick={getInsertVitalSigns}>Done</button>
+                        {/* <button className="done-btn" onClick={getInsertVitalSigns}>Done</button> */}
                     </div>
                 </div>
             </>
@@ -1976,17 +1985,17 @@ export default function PatientDetail() {
                                 <h4 style={{
                                     color: selectedVitalSign.dateOfRecord === vital.dateOfRecord ? '#000000' : '#8C8C8C',
                                     fontSize: 16, fontWeight: selectedVitalSign.dateOfRecord === vital.dateOfRecord ? 'bold' : 'normal', textAlign: 'left', margin: 0
-                                }}>{getPrescriptionDateTitle(vital.dateOfRecord)}</h4>
+                                }}>{getPrescriptionDateTitle(vital.dateOfRecord.split('T')[0])}</h4>
                             </button>
                         </div>
                     ))}
                 </div>
                 {vitalSignsData.length > 0 && (
                     <>
-                        {getPrescriptionDateTitle(selectedVitalData.dateOfRecord) === 'Today' && todaysAppointment && (
+                        {getPrescriptionDateTitle(selectedVitalData.dateOfRecord.split('T')[0]) === 'Today' && todaysAppointment && (
                             vitalEditableUI()
                         )}
-                        {getPrescriptionDateTitle(selectedVitalData.dateOfRecord) !== 'Today' && (
+                        {getPrescriptionDateTitle(selectedVitalData.dateOfRecord.split('T')[0]) !== 'Today' && (
                             <div style={PatientStyles.vitalsSummaryContainer} ref={vitalRef}>
                                 <div style={PatientStyles.vitalsSummaryWrapper}>
                                     <div style={PatientStyles.vitalsSummaryCard}>
@@ -2270,11 +2279,11 @@ export default function PatientDetail() {
 
     const getPrescriptionFrequency = (med, fType = 'forenoon' | 'afternoon' | 'evening' | 'night') => {
         switch (fType) {
-            case 'forenoon': return (med.frequency_F) || '0';
-            case 'afternoon': return (med.frequency_A) || '0';
-            case 'evening': return (med.frequency_E) || '0';
-            case 'night': return (med.frequency_N) || '0';
-            default: return '0';
+            case 'forenoon': return Number(med.frequency_F) || 0;
+            case 'afternoon': return Number(med.frequency_A) || 0;
+            case 'evening': return Number(med.frequency_E) || 0;
+            case 'night': return Number(med.frequency_N) || 0;
+            default: return 0;
         }
     }
 
@@ -2284,7 +2293,14 @@ export default function PatientDetail() {
         }
         return med.dosage_timing === 'after_food' ? 'After Food' : 'Before Food';
     }
+    const getDisplayId = (idx) => {
+        return idx + 1 < 10 ? `0${idx + 1}.` : `${idx + 1}.`;
+    }
+
     const renderPrescriptionUI = () => {
+        if (loading) {
+            return <CenteredLoader />;
+        }
         return (
             <div className="patient-section" ref={prescriptionRef} style={{ position: 'relative' }}>
                 <div style={{ ...PatientStyles.tabsContainer, height: 32, justifyContent: 'flex-start', gap: 12 }}>
@@ -2319,8 +2335,8 @@ export default function PatientDetail() {
                     </thead>
                     <tbody>
                         {Array.isArray(prescriptions) && prescriptions.length > 0 && prescriptions.map((med, idx) => (
-                            <tr key={med.id || idx}>
-                                <td style={PatientStyles.tableCellViewSmall}> <div className='tdDivLeft'>{idx + 1 < 10 ? `0${idx + 1}.` : `${idx + 1}.`}</div></td>
+                            <tr key={med.id}>
+                                <td style={PatientStyles.tableCellViewSmall}> <div className='tdDivLeft'>{getDisplayId(idx)}</div></td>
                                 <td> <div className='tdDivLeft'>{med.medicine_name}</div></td>
                                 <td style={PatientStyles.tableCellViewSmall}><div className='tdDivMid'>{med.quantity}</div></td>
                                 <td style={PatientStyles.tableCellViewMid}><div className='tdDivMid'>{getPrescriptionFrequency(med, 'forenoon')}</div></td>
@@ -2332,7 +2348,7 @@ export default function PatientDetail() {
                                 {getPrescriptionDateTitle(selectedPrescriptionDate) === 'Today' && (
                                     <td style={PatientStyles.tableCellAction}>
                                         <button
-                                            onClick={() => handleEditPrescription(idx)}
+                                            onClick={() => handleEditPrescription(med.id, idx)}
                                             disabled={editingIdx !== null}
                                             style={
                                                 {
@@ -2345,7 +2361,7 @@ export default function PatientDetail() {
                                             Edit
                                         </button>
                                         <button
-                                            onClick={() => handleRemovePrescription(idx)}
+                                            onClick={() => handleRemovePrescription(med.id, idx)}
                                             disabled={editingIdx !== null}
                                             style={
                                                 {
@@ -2364,7 +2380,7 @@ export default function PatientDetail() {
                         ))}
                         {getPrescriptionDateTitle(selectedPrescriptionDate) === 'Today' && (
                             <tr>
-                                <td><div className='tdDivPlain'>{editingIdx !== null ? editingIdx + 1 : prescriptions.length + 1}</div></td>
+                                <td><div className='tdDivPlain'>{editingIndex !== null ? getDisplayId(editingIndex) : getDisplayId(prescriptions.length)}</div></td>
                                 <td style={{ padding: '8px' }}>
                                     <div style={{ display: 'flex', gap: 6 }}>
                                         <input
@@ -2396,7 +2412,7 @@ export default function PatientDetail() {
                                 <td style={{ padding: '8px' }}>
                                     <div style={{ display: 'flex', gap: 6 }}>
                                         <select
-                                            value={newPrescription.frequency_F}
+                                            value={Number(newPrescription.frequency_F)}
                                             onChange={(e) => handlePrescriptionChange(e, 'frequency_F')}
                                             style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
                                         >
@@ -2411,7 +2427,7 @@ export default function PatientDetail() {
                                 <td style={{ padding: '8px' }}>
                                     <div style={{ display: 'flex', gap: 6 }}>
                                         <select
-                                            value={newPrescription.frequency_A}
+                                            value={Number(newPrescription.frequency_A)}
                                             onChange={(e) => handlePrescriptionChange(e, 'frequency_A')}
                                             style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
                                         >
@@ -2426,7 +2442,7 @@ export default function PatientDetail() {
                                 <td style={{ padding: '8px' }}>
                                     <div style={{ display: 'flex', gap: 6 }}>
                                         <select
-                                            value={newPrescription.frequency_E}
+                                            value={(Number(newPrescription.frequency_E))}
                                             onChange={(e) => handlePrescriptionChange(e, 'frequency_E')}
                                             style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
                                         >
@@ -2441,7 +2457,7 @@ export default function PatientDetail() {
                                 <td style={{ padding: '8px' }}>
                                     <div style={{ display: 'flex', gap: 6 }}>
                                         <select
-                                            value={newPrescription.frequency_N}
+                                            value={Number(newPrescription.frequency_N)}
                                             onChange={(e) => handlePrescriptionChange(e, 'frequency_N')}
                                             style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
                                         >

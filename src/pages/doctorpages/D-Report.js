@@ -44,15 +44,15 @@ const DoctorReport = () => {
         setError('');
         try {
             let url = `${API_BASE_URL}patient/getallpatientdetailsAll`;
-            console.log('Fetching:', url);
-            const response = await fetch(url, {
+            const requestOptions = {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' },
                 // body: JSON.stringify({ month: 12 })
-            });
-            console.log('Response status:', response.status);
+            };
+            console.log('Requesting:', { url, options: requestOptions });
+            const response = await fetch(url, requestOptions);
             const data = await response.json();
-            console.log('patients response:', data);
+            console.log('Response:', { url, options: requestOptions, response: data });
             if (response.ok) {
                 setPatients(data.data);
             } else {
@@ -69,14 +69,14 @@ const DoctorReport = () => {
         setError('');
         try {
             let url = `${API_BASE_URL}doctor/getpatientWithEachMonth`;
-            console.log('Fetching:', url);
-            const response = await fetch(url, {
+            const requestOptions = {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' },
-            });
-            console.log('Response status:', response.status);
+            };
+            console.log('Requesting:', { url, options: requestOptions });
+            const response = await fetch(url, requestOptions);
             const data = await response.json();
-            console.log('patientseachmonth response:', data);
+            console.log('Response:', { url, options: requestOptions, response: data });
             if (response.ok) {
                 setEachMonthPatients(data.data);
             } else {
@@ -93,14 +93,14 @@ const DoctorReport = () => {
         setError('');
         try {
             let url = `${API_BASE_URL}doctor/upcomingAppointment-doctor`;
-            console.log('Fetching:', url);
-            const response = await fetch(url, {
+            const requestOptions = {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' }
-            });
-            console.log('Response status:', response.status);
+            };
+            console.log('Requesting:', { url, options: requestOptions });
+            const response = await fetch(url, requestOptions);
             const data = await response.json();
-            console.log('upcomingAppointment response:', data);
+            console.log('Response:', { url, options: requestOptions, response: data });
             if (response.ok) {
                 setUpcomingAppointment(data.appointments);
             } else {
@@ -117,14 +117,14 @@ const DoctorReport = () => {
         setError('');
         try {
             let url = `${API_BASE_URL}admin/emergencyAppointment`;
-            console.log('Fetching:', url);
-            const response = await fetch(url, {
+            const requestOptions = {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' }
-            });
-            console.log('Response status E:', response.status);
+            };
+            console.log('Requesting:', { url, options: requestOptions });
+            const response = await fetch(url, requestOptions);
             const data = await response.json();
-            console.log('emergencyAppointment response:', data);
+            console.log('Response:', { url, options: requestOptions, response: data });
             if (response.ok) {
                 setEmergencyAppointment(data.emergencyAppointments);
             } else {
@@ -141,14 +141,14 @@ const DoctorReport = () => {
       setError('');
       try {
         let url = `${API_BASE_URL}doctor/TodayAppointments`;
-        console.log('Fetching:', url);
-        const response = await fetch(url, {
+        const requestOptions = {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' }
-        });
-            console.log('Resp status:', response.status);
+        };
+        console.log('Requesting:', { url, options: requestOptions });
+        const response = await fetch(url, requestOptions);
         const data = await response.json();
-            console.log('todayAppointmen!!... response:', data);
+        console.log('Response:', { url, options: requestOptions, response: data });
         if (response.ok) {
           setTodayAppointments(Array.isArray(data) ? data : []);
         } else {

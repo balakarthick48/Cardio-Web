@@ -94,15 +94,15 @@ const Doctordashboard = () => {
         try {
             // let url = `${API_BASE_URL}patient/getAllPatientDetails`;
             let url = `${API_BASE_URL}patient/getallpatientdetailsAll`;
-            console.log('Fetching:', url);
-            const response = await fetch(url, {
+            const requestOptions = {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' }
                 // body: JSON.stringify({ month: 12 })
-            });
-            console.log('Response status:', response.status);
+            };
+            console.log('Requesting:', { url, options: requestOptions });
+            const response = await fetch(url, requestOptions);
             const data = await response.json();
-            console.log('patients response:', data);
+            console.log('Response:', { url, options: requestOptions, response: data });
             if (response.ok) {
                 setPatients(data.data);
             } else {
@@ -119,14 +119,14 @@ const Doctordashboard = () => {
         setError('');
         try {
             let url = `${API_BASE_URL}doctor/getpatientWithEachMonth`;
-            console.log('Fetching:', url);
-            const response = await fetch(url, {
+            const requestOptions = {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' }
-            });
-            console.log('Response status:', response.status);
+            };
+            console.log('Requesting:', { url, options: requestOptions });
+            const response = await fetch(url, requestOptions);
             const data = await response.json();
-            console.log('patientseachmonth response:', data);
+            console.log('Response:', { url, options: requestOptions, response: data });
             if (response.ok) {
                 setEachMonthPatients(data.data);
             } else {
@@ -143,14 +143,14 @@ const Doctordashboard = () => {
         setError('');
         try {
             let url = `${API_BASE_URL}doctor/upcomingAppointment-doctor`;
-            console.log('Fetching:', url);
-            const response = await fetch(url, {
+            const requestOptions = {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' }
-            });
-            console.log('Response status:', response.status);
+            };
+            console.log('Requesting:', { url, options: requestOptions });
+            const response = await fetch(url, requestOptions);
             const data = await response.json();
-            console.log('upcomingAppointment response:', data);
+            console.log('Response:', { url, options: requestOptions, response: data });
             if (response.ok) {
                 setUpcomingAppointment(data.appointments);
             } else {
@@ -167,17 +167,16 @@ const Doctordashboard = () => {
         setError('');
         try {
             let url = `${API_BASE_URL}admin/emergencyAppointment`;
-            console.log('Fetching:', url);
-            const response = await fetch(url, {
+            const requestOptions = {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' }
-            });
-            console.log('Response status E:', response.status);
+            };
+            console.log('Requesting:', { url, options: requestOptions });
+            const response = await fetch(url, requestOptions);
             const data = await response.json();
-            console.log('emergencyAppointment response:', data);
+            console.log('Response:', { url, options: requestOptions, response: data });
             if (response.ok) {
                 setEmergencyAppointment(data.emergencyAppointments);
-                console.log('Emergency Appointments:', data.emergencyAppointments);
             } else {
                 setError(data.message || 'Failed to fetch emergencyAppointment detail');
             }
@@ -193,14 +192,14 @@ const Doctordashboard = () => {
         setError('');
         try {
             let url = `${API_BASE_URL}patient/TodayAppointments`;
-            console.log('Fetching:', url);
-            const response = await fetch(url, {
+            const requestOptions = {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' }
-            });
-            console.log('Resp status:', response.status);
+            };
+            console.log('Requesting:', { url, options: requestOptions });
+            const response = await fetch(url, requestOptions);
             const data = await response.json();
-            console.log('todayAppointmen!!... response:', data);
+            console.log('Response:', { url, options: requestOptions, response: data });
             if (response.ok) {
                 setTodayAppointments(Array.isArray(data) ? data : []);
             } else {
@@ -218,12 +217,16 @@ const Doctordashboard = () => {
         setError('');
         try {
             let url = `${API_BASE_URL}admin/update-appointment-status`;
-            const response = await fetch(url, {
+            const body = { appointmentId, status };
+            const requestOptions = {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ appointmentId, status })
-            });
+                body: JSON.stringify(body)
+            };
+            console.log('Requesting:', { url, body });
+            const response = await fetch(url, requestOptions);
             const data = await response.json();
+            console.log('Response:', { url, body, response: data });
             if (response.ok) {
                 setUpdateappointment(data);
                 toast.success(data.message || `Appointment., ${status}d`);
@@ -235,7 +238,6 @@ const Doctordashboard = () => {
                 toast.error(data.message || 'Failed to update appointment//');
                 setError(data.message || 'Failed');
             }
-            // console.log('prescriptions___', data.existingMedicines);
         } catch (err) {
             toast.error('Network error');
             setError('Network error');
@@ -249,14 +251,14 @@ const Doctordashboard = () => {
         try {
             // let url = `${API_BASE_URL}doctor/getappointments`; //allapointment
             let url = `${API_BASE_URL}patient/getappointments`;
-            console.log('Fetching:', url);
-            const response = await fetch(url, {
+            const requestOptions = {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' }
-            });
-            console.log('Response status:', response.status);
+            };
+            console.log('Requesting:', { url, options: requestOptions });
+            const response = await fetch(url, requestOptions);
             const data = await response.json();
-            console.log('appointment...:', data);
+            console.log('Response:', { url, options: requestOptions, response: data });
             if (response.ok) {
                 setAppointment(Array.isArray(data.data) ? data.data : []);
             } else {
@@ -283,14 +285,14 @@ const Doctordashboard = () => {
             }
             if (monthStr && monthStr.length === 1) monthStr = '0' + monthStr;
             let url = `${API_BASE_URL}patient/appointments/date_month?month=${monthStr || ''}&year=${yearStr || ''}`;
-            console.log('Fetchingtotal:', url);
-            const response = await fetch(url, {
+            const requestOptions = {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' }
-            });
-            console.log('Response status:', response.status);
+            };
+            console.log('Requesting:', { url, options: requestOptions });
+            const response = await fetch(url, requestOptions);
             const data = await response.json();
-            console.log('appointment...total:', data);
+            console.log('Response:', { url, options: requestOptions, response: data });
             if (response.ok) {
                 setTotalAppointment(Array.isArray(data.data) ? data.data : []);
             } else {
@@ -305,34 +307,6 @@ const Doctordashboard = () => {
     const getDashboardData = async () => {
         setLoading(true);
         setError('');
-        // try {
-        //     let month = '';
-        //     let year = '';
-        //     console.log('Selected,, month/year:', month, year);
-        //     if (selectedMonth && selectedMonth.includes('-')) {
-        //         [year, month] = selectedMonth.split('-');
-        //         console.log('Selected month/year:', month, year);
-        //     } else {
-        //         // fallback to current month/year if not set
-        //         const now = new Date();
-        //         year = now.getFullYear().toString();
-        //         month = String(now.getMonth() + 1).padStart(2, '0');
-        //     }
-        //         let url = `${API_BASE_URL}patient/dashboard/monthly-counts?month=${month}&year=${year}&date=${selectedDate}`;
-        //         console.log('Fetchingdashboard:', url);
-        //         const response = await fetch(url, {
-        //             method: 'GET',
-        //             headers: { 'Content-Type': 'application/json' }
-        //         });
-        //         console.log('Response status:', response.status);
-        //         const data = await response.json();
-        //         console.log('dashboard data:', data);
-        //         if (response.ok) {
-        //             setDashboardData(data.data);
-        //         } else {
-        //             setError(data.message || 'Failed to fetch dashboard data');
-        //         }
-        //     } 
         try {
             let url = '';
             
@@ -357,14 +331,14 @@ const Doctordashboard = () => {
                 setLoading(false);
                 return;
             }
-            console.log('Fetchingdashboard:', url);
-            const response = await fetch(url, {
+            const requestOptions = {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' }
-            });
-            console.log('Response status:', response.status);
+            };
+            console.log('Requesting:', { url, options: requestOptions });
+            const response = await fetch(url, requestOptions);
             const data = await response.json();
-            console.log('dashboard data:', data);
+            console.log('Response:', { url, options: requestOptions, response: data });
             if (response.ok) {
                 setDashboardData(data.data);
             } else {
