@@ -144,7 +144,12 @@ const AdminLogin = () => {
                     </div>
                 </form>
                 <div className="form-admin">
-                    <button type="button" className="admin-login" onClick={() => navigate('/')}>
+                    <button
+                        type="button"
+                        className="admin-login"
+                        onClick={() => navigate('/')}
+                        style={{ border: 'solid 1px', height: 44, width: '100%', backgroundColor: '#00000025', color: '#FFF', marginTop: '10px', borderRadius: '5px', fontWeight: 'bold', fontSize: '14px'}}
+                    >
                         Click here to doctor login
                     </button>
                 </div>

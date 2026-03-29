@@ -19,7 +19,7 @@ const Login = () => {
     const [error, setError] = useState('');
     const [type, setType] = useState('password');
     const [loading, setLoading] = useState(false);
-    const [login,setLogin] = useState(false);   
+    const [login, setLogin] = useState(false);
 
     // const { login } = useAuth();
 
@@ -40,7 +40,7 @@ const Login = () => {
             if (response.ok) {
                 setLogin(data);
                 toast.success(data.message);
-                    //   localStorage.setItem('resetEmail', email);
+                //   localStorage.setItem('resetEmail', email);
                 // localStorage.setItem('user', JSON.stringify(data.doctor));  
                 // navigate('/admindashboard'); // Redirect to dashboard
                 setTimeout(() => {
@@ -144,12 +144,17 @@ const Login = () => {
                     </div>
                 </form>
                 <div className="form-admin">
-                    <button type="button" className="admin-login" onClick={() => navigate('/adminlogin')}>
+                    <button
+                        type="button"
+                        className="admin-login"
+                        onClick={() => navigate('/adminlogin')}
+                        style={{ border: 'solid 1px', height: 44, width: '100%', backgroundColor: '#00000025', color: '#FFF', marginTop: '10px', borderRadius: '5px', fontWeight: 'bold', fontSize: '14px'}}
+                    >
                         Click here to admin login
                     </button>
                 </div>
             </div>
-          <ToastContainer position="top-right" autoClose={2000} hideProgressBar={false} newestOnTop={false} closeOnClick rtl={false} pauseOnFocusLoss draggable pauseOnHover />
+            <ToastContainer position="top-right" autoClose={2000} hideProgressBar={false} newestOnTop={false} closeOnClick rtl={false} pauseOnFocusLoss draggable pauseOnHover />
         </div>
     );
 };

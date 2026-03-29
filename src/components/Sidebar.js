@@ -49,32 +49,33 @@ const Sidebar = () => {
   };
 
   return (
-    <div className="sidebar">
-      {/* <div  style={{fontweight: 'bold', color: '#fff', fontSize: 12, textAlign: 'center', marginBottom: 4}}> */}
-      {/* <Link to="/dashboard"><img className="splash-logo" style={{ width: '50px', height: '70px', marginBottom: '40px' }} src={HeartWhite} alt="Cardio Doctor Logo" /> </Link> */}
-      <div className="sidebar-logo">
-        <img
-          src={HeartWhite}
-          style={{ width: '50px', height: '70px', marginBottom: '10px' }}
-          alt="Cardio Doctor Logo"
-          className="splash-logo"
-        />
-      </div>
-      <nav className="sidebar-menu">
-        {menuItems.map((item) => (
-          // <li key={item.key}>
-          <NavLink
-            key={item.key}
-            to={item.path}
-            className={({ isActive }) => "sidebar-link" + (isActive ? " active" : "")}>
-            <div className="sidebar-icon">{item.icon}</div>
-            <div className="sidebar-label">{item.label}</div>
-          </NavLink>
-          // </li>
-        ))}
-      </nav>
+    <>
+      <div className="sidebar">
+        {/* <div  style={{fontweight: 'bold', color: '#fff', fontSize: 12, textAlign: 'center', marginBottom: 4}}> */}
+        {/* <Link to="/dashboard"><img className="splash-logo" style={{ width: '50px', height: '70px', marginBottom: '40px' }} src={HeartWhite} alt="Cardio Doctor Logo" /> </Link> */}
+        <div className="sidebar-logo">
+          <img
+            src={HeartWhite}
+            style={{ width: '50px', height: '70px', marginBottom: '10px' }}
+            alt="Cardio Doctor Logo"
+            className="splash-logo"
+          />
+        </div>
+        <nav className="sidebar-menu">
+          {menuItems.map((item) => (
+            // <li key={item.key}>
+            <NavLink
+              key={item.key}
+              to={item.path}
+              className={({ isActive }) => "sidebar-link" + (isActive ? " active" : "")}>
+              <div className="sidebar-icon">{item.icon}</div>
+              <div className="sidebar-label">{item.label}</div>
+            </NavLink>
+            // </li>
+          ))}
+        </nav>
 
-      {/* <ul className="menu">
+        {/* <ul className="menu">
         <li>
           <img
             src={Dashboard}
@@ -112,9 +113,10 @@ const Sidebar = () => {
         </li>
       </ul> */}
 
-      <div className="sidebar-menu" onClick={() => setShowLogout(true)} style={{ cursor: "pointer" }}>
-        <FaSignOutAlt size={22} />
-        <span>Logout</span>
+        <div className="sidebar-menu" onClick={() => setShowLogout(true)} style={{ cursor: "pointer" }}>
+          <FaSignOutAlt size={22} />
+          <span>Logout</span>
+        </div>
       </div>
       {showLogout && (
         <div className="logout-popup">
@@ -127,7 +129,8 @@ const Sidebar = () => {
           </div>
         </div>
       )}
-    </div>
+
+    </>
   );
 };
 
