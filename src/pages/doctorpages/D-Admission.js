@@ -42,15 +42,15 @@ const DoctorAdmission = () => {
         setError('');
         try {
             let url = `${API_BASE_URL}doctor/appointments/doctor?doctorId=5`;
-            console.log('Fetching:', url);
-            const response = await fetch(url, {
+            const requestOptions = {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' },
                 // body: JSON.stringify({ month: 12 })
-            });
-            console.log('Response status:', response.status);
+            };
+            console.log('Requesting:', { url, options: requestOptions });
+            const response = await fetch(url, requestOptions);
             const data = await response.json();
-            console.log('patients response:', data);
+            console.log('Response:', { url, options: requestOptions, response: data });
             if (response.ok) {
                 setPatients(data.data);
             } else {
@@ -67,15 +67,15 @@ const DoctorAdmission = () => {
         setError('');
         try {
             let url = `${API_BASE_URL}patient/doctor-working-hours?doctorId=5`;
-            console.log('Fetching:', url);
-            const response = await fetch(url, {
+            const requestOptions = {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' },
                 // body: JSON.stringify({ month: 12 })
-            });
-            console.log('Response status:', response.status);
+            };
+            console.log('Requesting:', { url, options: requestOptions });
+            const response = await fetch(url, requestOptions);
             const data = await response.json();
-            console.log('patients response:', data);
+            console.log('Response:', { url, options: requestOptions, response: data });
             if (response.ok) {
                 setDoctorHours(data.data);
             } else {

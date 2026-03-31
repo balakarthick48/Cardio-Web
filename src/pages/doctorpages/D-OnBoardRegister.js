@@ -113,13 +113,18 @@ const DoctorOnBoardRegister = () => {
       if (files.digitalSignature) fd.append("digitalSignature", files.digitalSignature);
       if (files.profilePhoto) fd.append("profilePhoto", files.profilePhoto);
       if (files.bankAccountDocument) fd.append("bankAccountDocument", files.bankAccountDocument);
-    console.log('Form Datacheck///:', fd);
-      const response = await fetch(`${API_BASE_URL}doctor/register-doctor-form`, {
+
+      const url = `${API_BASE_URL}doctor/register-doctor-form`;
+      const requestOptions = {
         method: "POST",
         body: fd
-      });
+      };
+      // FormData is hard to log directly, so we log the parts
+      console.log('Requesting:', { url, body: { formFields, files } });
+      const response = await fetch(url, requestOptions);
 
       const data = await response.json();
+      console.log('Response:', { url, body: { formFields, files }, response: data });
 
       if (response.ok) {
         setSubmittedData(formFields); // Store the data before resetting

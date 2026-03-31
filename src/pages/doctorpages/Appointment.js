@@ -92,14 +92,14 @@ const getTodayDate = () => {
         setError('');
         try {
             let url = `${API_BASE_URL}patient/appointmentSlot-patient`;
-            console.log('Fetching:', url);
-            const response = await fetch(url, {
+            const requestOptions = {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' }
-            });
-            console.log('Response status:', response.status);
+            };
+            console.log('Requesting:', { url, options: requestOptions });
+            const response = await fetch(url, requestOptions);
             const data = await response.json();
-            console.log('appointment... response:', data);
+            console.log('Response:', { url, options: requestOptions, response: data });
             if (response.ok) {
                 setAppointmentslot(Array.isArray(data) ? data : []);
             } else {
@@ -116,14 +116,14 @@ const getTodayDate = () => {
         setError('');
         try {
             let url = `${API_BASE_URL}doctor/TodayAppointments`;
-            console.log('Fetching:', url);
-            const response = await fetch(url, {
+            const requestOptions = {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' }
-            });
-            console.log('Resp status:', response.status);
+            };
+            console.log('Requesting:', { url, options: requestOptions });
+            const response = await fetch(url, requestOptions);
             const data = await response.json();
-            console.log('todayAppointmen!!... response:', data);
+            console.log('Response:', { url, options: requestOptions, response: data });
             if (response.ok) {
                 setTodayAppointments(Array.isArray(data) ? data : []);
             } else {
@@ -140,14 +140,14 @@ const getTodayDate = () => {
         setError('');
         try {
             let url = `${API_BASE_URL}doctor/TodaycancelAppointments`;
-            console.log('Fetching:', url);
-            const response = await fetch(url, {
+            const requestOptions = {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' }
-            });
-            console.log('Response status:', response.status);
+            };
+            console.log('Requesting:', { url, options: requestOptions });
+            const response = await fetch(url, requestOptions);
             const data = await response.json();
-            console.log('appointment>>>response:', data);
+            console.log('Response:', { url, options: requestOptions, response: data });
             if (response.ok) {
                 setCancelAppointments(data.cancelledAppointments);
             } else {
@@ -164,17 +164,16 @@ const getTodayDate = () => {
         setError('');
         try {
             let url = `${API_BASE_URL}admin/emergencyAppointment`;
-            console.log('Fetching:', url);
-            const response = await fetch(url, {
+            const requestOptions = {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' }
-            });
-            console.log('Response status E:', response.status);
+            };
+            console.log('Requesting:', { url, options: requestOptions });
+            const response = await fetch(url, requestOptions);
             const data = await response.json();
-            console.log('emergencyAppointment response:', data);
+            console.log('Response:', { url, options: requestOptions, response: data });
             if (response.ok) {
                 setEmergencyAppointment(data.emergencyAppointments);
-                console.log('Emergency Appointments:', data.emergencyAppointments);
             } else {
                 setError(data.message || 'Failed to fetch emergencyAppointment detail');
             }
@@ -189,13 +188,17 @@ const getTodayDate = () => {
         setError('');
         try {
             let url = `${API_BASE_URL}admin/update-appointment-status`;
-            // url = 'https://mocki.io/v1/a5a086db-eb2d-40e6-98af-1181da3215af'
-            const response = await fetch(url, {
+            const body = { appointmentId, status };
+            const requestOptions = {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ appointmentId, status })
-            });
+                body: JSON.stringify(body)
+            };
+            console.log('Requesting:', { url, body });
+            // url = 'https://mocki.io/v1/a5a086db-eb2d-40e6-98af-1181da3215af'
+            const response = await fetch(url, requestOptions);
             const data = await response.json();
+            console.log('Response:', { url, body, response: data });
             if (response.ok) {
                 setUpdateappointment(data);
                 toast.success(data.message || `Appointment., ${status}d`);
@@ -207,7 +210,6 @@ const getTodayDate = () => {
                 toast.error(data.message || 'Failed to update appointment//');
                 setError(data.message || 'Failed');
             }
-            // console.log('prescriptions___', data.existingMedicines);
         } catch (err) {
             toast.error('Network error');
             setError('Network error');
@@ -221,12 +223,16 @@ const getTodayDate = () => {
             setError('');
             try {
                 let url = `${API_BASE_URL}patient/update-appointment-status`;
-                const response = await fetch(url, {
+                const body = { appointmentId, status };
+                const requestOptions = {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ appointmentId, status })
-                });
+                    body: JSON.stringify(body)
+                };
+                console.log('Requesting:', { url, body });
+                const response = await fetch(url, requestOptions);
                 const data = await response.json();
+                console.log('Response:', { url, body, response: data });
                 if (response.ok) {
                     setCompleteappointment(data);
                     toast.success(data.message || `Appointment., ${status}d`);
@@ -255,15 +261,16 @@ const getTodayDate = () => {
             const checkInDateTime = `${datePart} ${timePart}`; // "YYYY-MM-DD HH:MM:SS"
             // let url = `${API_BASE_URL}admin/check-in`;
             let url = `${API_BASE_URL}patient/check-in`;
-            // url = 'https://mocki.io/v1/a5a086db-eb2d-40e6-98af-1181da3215af'
-            const response = await fetch(url, {
+            const body = { appointmentId, checkInTime: checkInDateTime };
+            const requestOptions = {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ appointmentId, checkInTime: checkInDateTime })
-            });
-            console.log('Response status:4', response.status);
-            console.log('checkin payload}}}:', { appointmentId, checkInTime: checkInDateTime });
+                body: JSON.stringify(body)
+            };
+            console.log('Requesting:', { url, body });
+            const response = await fetch(url, requestOptions);
             const data = await response.json();
+            console.log('Response:', { url, body, response: data });
             // alert(data.message); // Show alert with the response message
             if (response.ok) {
                 setCheckin(data);
@@ -276,7 +283,6 @@ const getTodayDate = () => {
                 toast.error(data.message);
                 setError(data.message || 'Failed');
             }
-            // console.log('prescriptions___', data.existingMedicines);
         } catch (err) {
             setError('Network error');
         }
@@ -311,14 +317,14 @@ const getTodayDate = () => {
                 return;
             }
             
-            console.log('Fetching:', url);
-            const response = await fetch(url, {
+            const requestOptions = {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' }
-            });
-            console.log('Response status:', response.status);
+            };
+            console.log('Requesting:', { url, options: requestOptions });
+            const response = await fetch(url, requestOptions);
             const data = await response.json();
-            console.log('appointment...:', data);
+            console.log('Response:', { url, options: requestOptions, response: data });
             if (response.ok) {
                 setAppointment(Array.isArray(data.data) ? data.data : []);
             } else {
@@ -336,13 +342,17 @@ const getTodayDate = () => {
         setError('');
         try {
             let url = `${API_BASE_URL}doctor/update/finalStatus`;
-            // url = 'https://mocki.io/v1/a5a086db-eb2d-40e6-98af-1181da3215af'
-            const response = await fetch(url, {
+            const body = { patientId, slotId, status };
+            const requestOptions = {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ patientId, slotId, status })
-            });
+                body: JSON.stringify(body)
+            };
+            console.log('Requesting:', { url, body });
+            // url = 'https://mocki.io/v1/a5a086db-eb2d-40e6-98af-1181da3215af'
+            const response = await fetch(url, requestOptions);
             const data = await response.json();
+            console.log('Response:', { url, body, response: data });
             if (response.ok) {
                 setUpdateFinalStatus(data);
                 toast.success(data.message || `Appointment., ${status}d`);
@@ -354,7 +364,6 @@ const getTodayDate = () => {
                 toast.error(data.message || 'Failed to update appointment//');
                 setError(data.message || 'Failed');
             }
-            // console.log('prescriptions___', data.existingMedicines);
         } catch (err) {
             toast.error('Network error');
             setError('Network error');

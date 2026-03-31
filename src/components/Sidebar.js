@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/Sidebar.css";
+import Cookies from "js-cookie";
 import {
   FaUsers,
   FaRupeeSign,
@@ -27,7 +28,7 @@ const menuItems = [
   //             className="splash-logo"
   //           />,  path: "/" },
   // { key: "registerusers", icon: <FaUsers/>, label: "New Users", path: "/registerusers" },
-  { key: "frontdesk", icon: <FaBuffer size={23} />, label: "FrontDesk", path: "/adminfrontdesk" },
+  // { key: "frontdesk", icon: <FaBuffer size={23} />, label: "FrontDesk", path: "/adminfrontdesk" },
   { key: "dashboard", icon: <img src={Dashboard} style={{ width: '20px', height: '20px' }} />, label: "Dashboard", path: "/doctordashboard" },
   { key: "appointment", icon: <img src={Appointment} style={{ width: '25px', height: '25px' }} />, label: "Appointment", path: "/appointment" },
   { key: "admission", icon: <img src={Admission} style={{ width: '25px', height: '25px' }} />, label: "Admission", path: "/doctoradmission" },
@@ -45,36 +46,38 @@ const Sidebar = () => {
   const handleLogout = () => {
     // Clear any auth tokens or user info if needed
     localStorage.clear();
+    Cookies.remove("signInData");
     navigate("/");
   };
 
   return (
-    <div className="sidebar">
-      {/* <div  style={{fontweight: 'bold', color: '#fff', fontSize: 12, textAlign: 'center', marginBottom: 4}}> */}
-      {/* <Link to="/dashboard"><img className="splash-logo" style={{ width: '50px', height: '70px', marginBottom: '40px' }} src={HeartWhite} alt="Cardio Doctor Logo" /> </Link> */}
-      <div className="sidebar-logo">
-        <img
-          src={HeartWhite}
-          style={{ width: '50px', height: '70px', marginBottom: '10px' }}
-          alt="Cardio Doctor Logo"
-          className="splash-logo"
-        />
-      </div>
-      <nav className="sidebar-menu">
-        {menuItems.map((item) => (
-          // <li key={item.key}>
-          <NavLink
-            key={item.key}
-            to={item.path}
-            className={({ isActive }) => "sidebar-link" + (isActive ? " active" : "")}>
-            <div className="sidebar-icon">{item.icon}</div>
-            <div className="sidebar-label">{item.label}</div>
-          </NavLink>
-          // </li>
-        ))}
-      </nav>
+    <>
+      <div className="sidebar">
+        {/* <div  style={{fontweight: 'bold', color: '#fff', fontSize: 12, textAlign: 'center', marginBottom: 4}}> */}
+        {/* <Link to="/dashboard"><img className="splash-logo" style={{ width: '50px', height: '70px', marginBottom: '40px' }} src={HeartWhite} alt="Cardio Doctor Logo" /> </Link> */}
+        <div className="sidebar-logo">
+          <img
+            src={HeartWhite}
+            style={{ width: '50px', height: '70px', marginBottom: '10px' }}
+            alt="Cardio Doctor Logo"
+            className="splash-logo"
+          />
+        </div>
+        <nav className="sidebar-menu">
+          {menuItems.map((item) => (
+            // <li key={item.key}>
+            <NavLink
+              key={item.key}
+              to={item.path}
+              className={({ isActive }) => "sidebar-link" + (isActive ? " active" : "")}>
+              <div className="sidebar-icon">{item.icon}</div>
+              <div className="sidebar-label">{item.label}</div>
+            </NavLink>
+            // </li>
+          ))}
+        </nav>
 
-      {/* <ul className="menu">
+        {/* <ul className="menu">
         <li>
           <img
             src={Dashboard}
@@ -112,9 +115,10 @@ const Sidebar = () => {
         </li>
       </ul> */}
 
-      <div className="sidebar-menu" onClick={() => setShowLogout(true)} style={{ cursor: "pointer" }}>
-        <FaSignOutAlt size={22} />
-        <span>Logout</span>
+        <div className="sidebar-menu" onClick={() => setShowLogout(true)} style={{ cursor: "pointer" }}>
+          <FaSignOutAlt size={22} />
+          <span>Logout</span>
+        </div>
       </div>
       {showLogout && (
         <div className="logout-popup">
@@ -127,7 +131,8 @@ const Sidebar = () => {
           </div>
         </div>
       )}
-    </div>
+
+    </>
   );
 };
 

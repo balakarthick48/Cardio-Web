@@ -17,8 +17,8 @@ export const setCompleteAppointment = async (appointmentId, patientId) => {
     const json = await response.json();
     console.log("Response", response);
     console.log("json", json);
-    if (!response.ok && json.success !== 'ok') {
+    if (!response.ok && json.success.toLowerCase() !== 'ok') {
         throw new Error(json.message || 'Failed to fetch complete the appointment');
     }
-    return json.status;
+    return json.message;
 }

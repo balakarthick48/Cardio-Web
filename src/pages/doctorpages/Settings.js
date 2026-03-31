@@ -20,18 +20,21 @@ export default function Settings() {
         setError('');
         try {
             let url = `${API_BASE_URL}doctor/averageRating`;
-            const response = await fetch(url, {
+            const body = {};
+            const requestOptions = {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({})
-            });
+                body: JSON.stringify(body)
+            };
+            console.log('Requesting:', { url, body });
+            const response = await fetch(url, requestOptions);
             const data = await response.json();
+            console.log('Response:', { url, body, response: data });
             if (response.ok) {
           setRatings(data.averageRating);
             } else {
                 setError(data.averageRating || 'Failed');
             }
-            console.log(data.averageRating);
         } catch (err) {
             setError('Network error');
         }
@@ -43,14 +46,14 @@ export default function Settings() {
             setError('');
             try {
                 let url = `${API_BASE_URL}doctor/getappointments`;
-                console.log('Fetching:', url);
-                const response = await fetch(url, {
+                const requestOptions = {
                     method: 'GET',
                     headers: { 'Content-Type': 'application/json' }
-                });
-                console.log('Response status:', response.status);
+                };
+                console.log('Requesting:', { url, options: requestOptions });
+                const response = await fetch(url, requestOptions);
                 const data = await response.json();
-                console.log('appointment...:', data);
+                console.log('Response:', { url, options: requestOptions, response: data });
                 if (response.ok) {
                     setAppointment(Array.isArray(data.data) ? data.data : []);
                 } else {
@@ -67,14 +70,14 @@ export default function Settings() {
         setError('');
         try {
             let url = `${API_BASE_URL}patient/getallpatientdetailsAll`;
-            console.log('Fetching:', url);
-            const response = await fetch(url, {
+            const requestOptions = {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' },
-            });
-            console.log('Response status:', response.status);
+            };
+            console.log('Requesting:', { url, options: requestOptions });
+            const response = await fetch(url, requestOptions);
             const data = await response.json();
-            console.log('patients response:', data);
+            console.log('Response:', { url, options: requestOptions, response: data });
             if (response.ok) {
                 setPatients(data.data);
             } else {
