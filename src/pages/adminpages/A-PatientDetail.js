@@ -437,7 +437,7 @@ export default function PatientDetail() {
         try {
             let url = getApiUrl(URLConfigEnum.DELETE_PRESCRIPTIONS);
             const requestOptions = {
-                method: 'POST',
+                method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body),
             };
@@ -640,6 +640,7 @@ export default function PatientDetail() {
             console.log('Response:', { url, body, response: data });
             if (response.ok && data.message.toLowerCase().includes('success')) {
                 toast.success(data.message);
+                handleCancelEditPrescription();
                 getPrescriptions();
             } else {
                 toast.error(data.message);
