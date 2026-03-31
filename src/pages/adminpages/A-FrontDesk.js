@@ -19,7 +19,9 @@ import inv5img from '../../assets/images/Inv5.png';
 import inv6img from '../../assets/images/Inv6.png';
 import Asset1 from '../../assets/images/Asset1.png';
 import Asset2 from '../../assets/images/Asset2.png';
-import Asset3 from '../../assets/images/Asset3.png';       
+import Asset3 from '../../assets/images/Asset3.png';
+import AdminSidebar from '../../components/AdminSidebar';
+import AdminHeader from '../../components/AdminHeader';
 
 const AdminFrontDesk = () => {
     const navigate = useNavigate();
@@ -83,7 +85,7 @@ const AdminFrontDesk = () => {
     }, []);
 
     // other UI --------
-     // Sample data for dashboard metrics
+    // Sample data for dashboard metrics
     // const dashboardData = {
     //     appointments: {
     //         total: 100,
@@ -166,7 +168,7 @@ const AdminFrontDesk = () => {
                 <Header />
                 
                 {/* other UI -------- */}
-                    {/* <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
+                {/* <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
                         <DashboardCard title="Appointment Booking">
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                 <div>
@@ -333,108 +335,108 @@ const AdminFrontDesk = () => {
                             </div>
                         </DashboardCard>
                     </div> */}
-                    {/* other UI -------- */}
-<div className="dashboard-content">
-      {/* Row 1 */}
-      <div className="grid-row">
-        <div className="card booking-card">
-          <div>
-            <h3>Appointment Booking</h3>
-            <button className="primary-btn">View Slot</button>
-          </div>
-          <img src={appimg} alt="booking" />
-        </div>
+                {/* other UI -------- */}
+                <div className="dashboard-content">
+                    {/* Row 1 */}
+                    <div className="grid-row">
+                        <div className="card booking-card">
+                            <div>
+                                <h3>Appointment Booking</h3>
+                                <button className="primary-btn">View Slot</button>
+                            </div>
+                            <img src={appimg} alt="booking" />
+                        </div>
 
-        <div className="card">
-          <div className="card-header">
-            <h3>Appointments</h3>
-            <span>August | Today</span>
-          </div>
+                        <div className="card">
+                            <div className="card-header">
+                                <h3>Appointments</h3>
+                                <span>August | Today</span>
+                            </div>
 
-          <div className="stats-row">
-            <div className="stat-box">
-                <img src={apps1img} alt="booking" />
-              <p>Total Appointments</p>
-              <h2>100</h2>
-            </div>
-            <div className="stat-box">
-                <img src={apps2img} alt="booking" />
-              <p>Total Patients</p>
-              <h2>50</h2>
-            </div>
-            <div className="stat-box">
-                <img src={apps3img} alt="booking" />
-              <p>Total Representatives</p>
-              <h2>20</h2>
-            </div>
-          </div>
-        </div>
-      </div>
+                            <div className="stats-row">
+                                <div className="stat-box">
+                                    <img src={apps1img} alt="booking" />
+                                    <p>Total Appointments</p>
+                                    <h2>100</h2>
+                                </div>
+                                <div className="stat-box">
+                                    <img src={apps2img} alt="booking" />
+                                    <p>Total Patients</p>
+                                    <h2>50</h2>
+                                </div>
+                                <div className="stat-box">
+                                    <img src={apps3img} alt="booking" />
+                                    <p>Total Representatives</p>
+                                    <h2>20</h2>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
-      {/* Row 2 */}
-      <div className="grid-row">
-        <div className="card">
-          <h3>Inventory</h3>
-          <div className="stats-grid">
-            <div className="mini-box">
-                <img src={inv1img} alt="booking" className="booking-img" />Total PR <span>50</span></div>
-            <div className="mini-box warning">
-                <img src={inv2img} alt="booking" className="booking-img"/>PR Pending <span>10</span></div>
-            <div className="mini-box success">
-                <img src={inv3img} alt="booking" className="booking-img" />PR Approved <span>05</span></div>
-            <div className="mini-box">
-                <img src={inv4img} alt="booking" className="booking-img" />Total PO <span>50</span></div>
-            <div className="mini-box">
-                <img src={inv5img} alt="booking" className="booking-img" />Total Inward <span>10</span></div>
-            <div className="mini-box success">
-                <img src={inv6img} alt="booking" className="booking-img"/>Total Bills <span>05</span></div>
-          </div>
-        </div>
+                    {/* Row 2 */}
+                    <div className="grid-row">
+                        <div className="card">
+                            <h3>Inventory</h3>
+                            <div className="stats-grid">
+                                <div className="mini-box">
+                                    <img src={inv1img} alt="booking" className="booking-img" />Total PR <span>50</span></div>
+                                <div className="mini-box warning">
+                                    <img src={inv2img} alt="booking" className="booking-img" />PR Pending <span>10</span></div>
+                                <div className="mini-box success">
+                                    <img src={inv3img} alt="booking" className="booking-img" />PR Approved <span>05</span></div>
+                                <div className="mini-box">
+                                    <img src={inv4img} alt="booking" className="booking-img" />Total PO <span>50</span></div>
+                                <div className="mini-box">
+                                    <img src={inv5img} alt="booking" className="booking-img" />Total Inward <span>10</span></div>
+                                <div className="mini-box success">
+                                    <img src={inv6img} alt="booking" className="booking-img" />Total Bills <span>05</span></div>
+                            </div>
+                        </div>
 
-        <div className="card">
-          <div className="card-header">
-            <h3>Bill Receipt (Total)</h3>
-            <span>August | Today</span>
-          </div>
+                        <div className="card">
+                            <div className="card-header">
+                                <h3>Bill Receipt (Total)</h3>
+                                <span>August | Today</span>
+                            </div>
 
-          <div className="bill-list">
-            <p>Total Collected Amount <b className="green">₹ 20,000</b></p>
-            <p>Total Amount Paid <b className="blue">₹ 10,000</b></p>
-            <p>Balance Amount <b className="red">₹ 10,000</b></p>
-          </div>
-        </div>
-      </div>
+                            <div className="bill-list">
+                                <p>Total Collected Amount <b className="green">₹ 20,000</b></p>
+                                <p>Total Amount Paid <b className="blue">₹ 10,000</b></p>
+                                <p>Balance Amount <b className="red">₹ 10,000</b></p>
+                            </div>
+                        </div>
+                    </div>
 
-      {/* Row 3 */}
-      <div className="grid-row">
-        <div className="card">
-          <h3>Accounts</h3>
-          <div className="stats-grid">
-            <div className="mini-box">
-                <img src={inv1img} alt="booking" className="booking-img" />Due Amount <span>50</span></div>
-            <div className="mini-box warning">
-                <img src={inv2img} alt="booking" className="booking-img" />Not Due <span>10</span></div>
-            <div className="mini-box success">
-                <img src={inv3img} alt="booking" className="booking-img" />Total Payable <span>05</span></div>
-          </div>
-        </div>
+                    {/* Row 3 */}
+                    <div className="grid-row">
+                        <div className="card">
+                            <h3>Accounts</h3>
+                            <div className="stats-grid">
+                                <div className="mini-box">
+                                    <img src={inv1img} alt="booking" className="booking-img" />Due Amount <span>50</span></div>
+                                <div className="mini-box warning">
+                                    <img src={inv2img} alt="booking" className="booking-img" />Not Due <span>10</span></div>
+                                <div className="mini-box success">
+                                    <img src={inv3img} alt="booking" className="booking-img" />Total Payable <span>05</span></div>
+                            </div>
+                        </div>
 
-        <div className="card">
-          <h3>Assets</h3>
-          <ul className="asset-list">
-            <div className="stats-grid">
-                <img src={Asset1} alt="booking" className="booking-img" />Laptop (4) <li><span>50</span> <span className="green">₹ 1,00,000</span></li></div>
-                 <div className="stats-grid">
-                <img src={Asset2} alt="booking" className="booking-img" />ECG (01) <li><span>50</span> <span className="green">₹ 1,00,000</span></li></div>
-                 <div className="stats-grid">
-                <img src={Asset3} alt="booking" className="booking-img" />X-Ray (01) <li><span>50</span> <span className="green">₹ 1,00,000</span></li></div>
-            {/* <img src={Asset1} alt="booking" className="booking-img"/><li>Laptop (04) <span className="green">₹ 1,00,000</span></li>
+                        <div className="card">
+                            <h3>Assets</h3>
+                            <ul className="asset-list">
+                                <div className="stats-grid">
+                                    <img src={Asset1} alt="booking" className="booking-img" />Laptop (4) <li><span>50</span> <span className="green">₹ 1,00,000</span></li></div>
+                                <div className="stats-grid">
+                                    <img src={Asset2} alt="booking" className="booking-img" />ECG (01) <li><span>50</span> <span className="green">₹ 1,00,000</span></li></div>
+                                <div className="stats-grid">
+                                    <img src={Asset3} alt="booking" className="booking-img" />X-Ray (01) <li><span>50</span> <span className="green">₹ 1,00,000</span></li></div>
+                                {/* <img src={Asset1} alt="booking" className="booking-img"/><li>Laptop (04) <span className="green">₹ 1,00,000</span></li>
             <li>ECG (01) <span className="green">₹ 1,25,000</span></li>
             <li>X-Ray (01) <span className="green">₹ 50,000</span></li> */}
-          </ul>
-        </div>
-      </div>
-      </div>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     );

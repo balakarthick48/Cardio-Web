@@ -7,6 +7,8 @@ import API_BASE_URL from '../../config';
 import doctorImage from '../../assets/images/Doctor.png';
 import HeartIcon from '../../assets/images/RedHeart.png';
 import HeartWhite from '../../assets/images/WhiteHeart.png';
+import Cookies from 'js-cookie';
+import CryptoJS from 'crypto-js';
 // import { toast, ToastContainer } from 'react-toastify';
 // import 'react-toastify/dist/ReactToastify.css';
 
@@ -17,7 +19,7 @@ const AdminLogin = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
-    const [login,setLogin] = useState(false);   
+    const [login, setLogin] = useState(null);
     const [type, setType] = useState('password');
     const [loading, setLoading] = useState(false);
 
@@ -37,22 +39,33 @@ const AdminLogin = () => {
                 body: JSON.stringify({ email, password })
             });
             const data = await response.json();
-            if (response.ok) {
-                // alert('Login successful!');
-                // login(); // Update authentication state
+            console.log('Admin Login response:', data);
+            if (response.ok && data.admin?.email) {
                 setLogin(data);
                 toast.success(data.message);
-                // navigate('/admindashboard'); // Redirect to dashboard
+
+                const rawString = `admin+${data.admin.email}`;
+                // IMPORTANT: Store your secret key in environment variables, not in the code.
+                const secretKey = '7K9wN2mP5rB1xZ8q';
+                const encryptedString = CryptoJS.AES.encrypt(rawString, secretKey).toString();
+
+                // Set the encrypted cookie
+                Cookies.set('signInData', encryptedString, { expires: 7, secure: true, sameSite: 'strict' });
+
+                // Also storing the raw email in localStorage as it seems to be used elsewhere
+                localStorage.setItem('resetEmail', data.admin.email);
+
                 setTimeout(() => {
-                    navigate('/admindashboard'); // Redirect to dashboard after 3 seconds
+                    navigate('/admindashboard'); // Redirect to dashboard after 2 seconds
                 }, 2000);
             } else {
-                toast.error(data.message);
-                setError(data.message || 'Login failed');
+                const errorMessage = data.message || 'Login failed: Invalid response from server';
+                toast.error(errorMessage);
+                setError(errorMessage);
             }
-            console.log(data.message);
         } catch (err) {
             setError('Network error');
+            toast.error('Network error. Please try again.');
         }
         setLoading(false);
     };

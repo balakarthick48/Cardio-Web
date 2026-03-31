@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/Sidebar.css";
+import Cookies from "js-cookie";
 import {
   FaUsers,
   FaRupeeSign,
@@ -37,6 +38,7 @@ const AdminSidebar = () => {
   const handleLogout = () => {
     // Clear any auth tokens or user info if needed
     localStorage.clear();
+    Cookies.remove("signInData");
     navigate("/adminlogin");
   };
 

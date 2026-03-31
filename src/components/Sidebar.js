@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/Sidebar.css";
+import Cookies from "js-cookie";
 import {
   FaUsers,
   FaRupeeSign,
@@ -27,7 +28,7 @@ const menuItems = [
   //             className="splash-logo"
   //           />,  path: "/" },
   // { key: "registerusers", icon: <FaUsers/>, label: "New Users", path: "/registerusers" },
-  { key: "frontdesk", icon: <FaBuffer size={23} />, label: "FrontDesk", path: "/adminfrontdesk" },
+  // { key: "frontdesk", icon: <FaBuffer size={23} />, label: "FrontDesk", path: "/adminfrontdesk" },
   { key: "dashboard", icon: <img src={Dashboard} style={{ width: '20px', height: '20px' }} />, label: "Dashboard", path: "/doctordashboard" },
   { key: "appointment", icon: <img src={Appointment} style={{ width: '25px', height: '25px' }} />, label: "Appointment", path: "/appointment" },
   { key: "admission", icon: <img src={Admission} style={{ width: '25px', height: '25px' }} />, label: "Admission", path: "/doctoradmission" },
@@ -45,6 +46,7 @@ const Sidebar = () => {
   const handleLogout = () => {
     // Clear any auth tokens or user info if needed
     localStorage.clear();
+    Cookies.remove("signInData");
     navigate("/");
   };
 
