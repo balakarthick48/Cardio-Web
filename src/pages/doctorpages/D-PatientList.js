@@ -3,17 +3,12 @@ import '../../styles/D-Dashboard.css';
 import Sidebar from '../../components/Sidebar';
 import Header from '../../components/Header';
 import Profile from '../../components/Profile';
-import CenteredLoader from '../../components/CenteredLoader';
-import { fetchAppointmentHistory } from '../../api/appointmentHistoryApi';
-import Icon from '../../assets/images/Icon.png';
-import Icon1 from '../../assets/images/Icon1.png';
-import Icon2 from '../../assets/images/Icon2.png';
-import Icon3 from '../../assets/images/Icon3.png';
 import { FaArrowLeft, FaArrowRight } from 'react-icons/fa';
-import { Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import API_BASE_URL from '../../config';
 import { useNavigate } from 'react-router-dom';
 import DateValues from '../../configs/dateValues';
+import { fetchAppointmentHistory } from '../../api/appointmentHistoryApi';
+import CenteredLoader from '../../components/CenteredLoader';
 
 const styles = {
     filterContainer: {
@@ -175,7 +170,10 @@ const PatientList = () => {
                 name: item.patient_name,
                 email: item.email,
                 mobile: item.phone_number,
-                address: item.address
+                address: item.address,
+                appointmentId: item.appointment_id,
+                packageType: item.appointment_type,
+                appointmentDate: item.appointment_date
             }
         })
     };

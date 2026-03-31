@@ -1,10 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import '../../styles/D-Dashboard.css';
-import Sidebar from '../../components/Sidebar';
-import Header from '../../components/Header';
 import '../../styles/A-FrontDesk.css';
-import Profile from '../../components/Profile';
-import { FaArrowLeft, FaArrowRight } from 'react-icons/fa';
 import API_BASE_URL from '../../config';
 import { useNavigate } from 'react-router-dom';
 import appimg from '../../assets/images/App-B.png';
@@ -163,9 +159,9 @@ const AdminFrontDesk = () => {
 
     return (
         <div className="dashboard-layout">
-            <Sidebar />
+            <AdminSidebar />
             <div className="main-section">
-                <Header />
+                <AdminHeader />
                 
                 {/* other UI -------- */}
                 {/* <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>

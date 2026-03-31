@@ -41,7 +41,7 @@ const PatientEatingTypeDropdownModel = [
 
 export default function PatientDetail() {
     const location = useLocation();
-    const { patientId, email, mobile, address, name, appointmentId, packageType } = location.state || {};
+    const { patientId, email, mobile, address, name, appointmentId, packageType, appointmentDate } = location.state || {};
     // const patientIdFromState = location.state?.patientId || null;
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -122,8 +122,6 @@ export default function PatientDetail() {
         recordDate: '',
         report_file_url: ''
     });
-
-    const [generalNextVisitDate, setGeneralNextVisitDate] = useState('');
 
     // Local inputs for new investigation entry
     const [investigationTypeInput, setInvestigationTypeInput] = useState('');
@@ -513,8 +511,17 @@ export default function PatientDetail() {
                     grouped[getTodayDate()] = [];
                 }
                 setGroupedPrescriptions(grouped);
-                const dateToDisplay = selectedPrescriptionDate || (todaysAppointment ? getTodayDate() : (dates.length > 0 ? dates[0] : getTodayDate()));
-
+                let firstDateToSelect = selectedPrescriptionDate;
+                if (todaysAppointment && appointmentDate) {
+                    firstDateToSelect = appointmentDate.split('T')[0];
+                } else if (todaysAppointment) {
+                    firstDateToSelect = getTodayDate();
+                } else if (dates.length > 0) {
+                    firstDateToSelect = dates[0];
+                } else {
+                    firstDateToSelect = getTodayDate();
+                }
+                const dateToDisplay = firstDateToSelect;
                 if (!selectedPrescriptionDate) {
                     setSelectedPrescriptionDate(dateToDisplay);
                 }
@@ -899,7 +906,13 @@ export default function PatientDetail() {
                 });
                 setVitalSignsData(uniqueVitals);
                 if (uniqueVitals.length > 0) {
-                    const firstData = uniqueVitals[0];
+                    let firstDateToSelect = selectedVitalSign;
+                    if (todaysAppointment && appointmentDate) {
+                        firstDateToSelect = uniqueVitals.find(v => v.dateOfRecord.split('T')[0] === appointmentDate.split('T')[0]) || uniqueVitals[0];
+                    } else {
+                        firstDateToSelect = uniqueVitals[0];
+                    }
+                    let firstData = firstDateToSelect;
                     setselectedVitalSign(firstData);
                     if (getPrescriptionDateTitle(firstData.dateOfRecord.split('T')[0]) === 'Today') {
                         setVitalSigns(prev => (
@@ -923,7 +936,7 @@ export default function PatientDetail() {
                                 bmi: firstData.bmi || ''
                             }
                         ))
-                    } else if (todaysAppointment) {
+                    } else if (todaysAppointment && !appointmentDate) {
                         setupDefaultVitalForToday(uniqueVitals);
                     }
                 } else {
@@ -1040,23 +1053,24 @@ export default function PatientDetail() {
                 }, {});
 
                 const today = getTodayDate();
-                if (!grouped[today] && todaysAppointment) {
+                if (!grouped[today] && todaysAppointment && !appointmentDate) {
                     grouped[today] = [{ created_at: getTodayDate() }];
                 }
 
                 const dates = Object.keys(grouped).sort().reverse();
                 setGroupedSymptoms(grouped);
-                let todaysItem = grouped[dates[0]]
-                let nextDay = grouped[dates[1]]
-                if (todaysItem?.[0]?.next_visit_date) {
-                    setGeneralNextVisitDate(todaysItem[0].next_visit_date);
-                } else if (nextDay?.[0]?.next_visit_date) {
-                    setGeneralNextVisitDate(nextDay[0].next_visit_date);
-                } else {
-                    setGeneralNextVisitDate('');
-                }
                 const firstDateSelected = grouped[dates[0]]?.[0]?.created_at || '';
-                const dateToDisplay = selectedSymptomDate || (todaysAppointment ? today : firstDateSelected);
+                let firstDateToSelect = selectedSymptomDate;
+                if (todaysAppointment && appointmentDate) {
+                    firstDateToSelect = appointmentDate.split('T')[0];
+                } else if (todaysAppointment && !appointmentDate) {
+                    firstDateToSelect = getTodayDate();
+                } else if (dates.length > 0) {
+                    firstDateToSelect = grouped[dates[0]]?.[0]?.created_at || '';
+                } else {
+                    firstDateToSelect = getTodayDate();
+                }
+                const dateToDisplay = firstDateToSelect
                 console.log('dateToDisplay:', dateToDisplay, firstDateSelected);
                 if (!selectedSymptomDate) {
                     setSelectedSymptomDate(dateToDisplay);
@@ -1180,9 +1194,17 @@ export default function PatientDetail() {
 
                 const dates = Object.keys(grouped).sort().reverse();
                 setGroupedInvestigations(grouped);
-
-                const dateToDisplay = selectedInvestigationDate || (dates.length > 0 ? dates[0] : (todaysAppointment ? today : ''));
-
+                let firstDateToSelect = selectedInvestigationDate;
+                if (todaysAppointment && appointmentDate) {
+                    firstDateToSelect = appointmentDate.split('T')[0];
+                } else if (todaysAppointment && !appointmentDate) {
+                    firstDateToSelect = getTodayDate();
+                } else if (dates.length > 0) {
+                    firstDateToSelect = dates[0];
+                } else {
+                    firstDateToSelect = getTodayDate();
+                }
+                const dateToDisplay = firstDateToSelect
                 if (!selectedInvestigationDate) {
                     setSelectedInvestigationDate(dateToDisplay);
                 }
@@ -1206,6 +1228,7 @@ export default function PatientDetail() {
             console.log('No appointmentId to preview');
             return;
         }
+        setLoading(true);
         try {
             const url = getApiUrl(URLConfigEnum.PATIENT_PREVIEW, patientId, appointmentId);
             const requestOptions = {
@@ -1273,32 +1296,41 @@ export default function PatientDetail() {
             );
 
             const data = await response.json();
-
             if (response.ok) {
                 toast.success("Investigation updated successfully");
                 setaddInvestigationData(false);
+                resetDiagnosticInputs();
             } else {
                 toast.error(data.message || "Failed");
             }
         } catch (err) {
             toast.error("Network error");
+        } finally {
+            setLoading(false);
+            getInvestigationData();
         }
-
-        setLoading(false);
     };
+
 
     const handleConfirmCheckout = async () => {
         // This method is intentionally left empty for now, as per the request.
         setIsCheckoutConfirmModalOpen(false);
+        setLoading(true);
         if (todaysAppointment && patientId) {
             try {
                 const data = await setCompleteAppointment(todaysAppointment, patientId);
-                if (data) {
+                console.log('Complete appointment response:', data);
+                if (data && data.toLowerCase().includes('success')) {
                     toast.success('Appointment completed successfully');
+                } else {
+                    toast.error(data || 'Failed to complete appointment');
                 }
             } catch (error) {
                 console.error('Error completing appointment:', error);
                 toast.error('Failed to complete appointment');
+            } finally {
+                setLoading(false);
+                getPreviewData(todaysAppointment);
             }
         } else {
             toast.warning('No appointment/patient ID found for today');
@@ -2857,7 +2889,7 @@ export default function PatientDetail() {
                                     <textarea
                                         value={symptomsFormData.nextVisitDate}
                                         onChange={(e) => setSymptomsFormData(prev => ({ ...prev, nextVisitDate: e.target.value }))}
-                                        placeholder="Enter Here..."
+                                        placeholder="Enter Here... (YYYY-MM-DD)"
                                         style={{
                                             width: '100%',
                                             padding: '10px 12px',
@@ -3086,7 +3118,16 @@ export default function PatientDetail() {
         )
     };
 
+    const resetDiagnosticInputs = () => {
+        setInvestigationTypeInput('');
+        setInvestigationDescriptionInput('');
+        setImages([]);
+    }
+
     const renderDiagnosticUI = () => {
+        if (loading) {
+            return <div style={PatientStyles.loadingText}>Loading diagnostic investigations...</div>;
+        }
         return (
             <div className="diagnostic-section" ref={diagnosticRef} style={PatientStyles.diagnosticSection}>
                 <div style={{ ...PatientStyles.tabsContainer, height: 32, justifyContent: 'flex-start', gap: 12 }}>
@@ -3143,7 +3184,7 @@ export default function PatientDetail() {
                                     </div>
                                     <div style={PatientStyles.formActions}>
                                         <button
-                                            onClick={() => { setInvestigationTypeInput(''); setInvestigationDescriptionInput(''); setImages([]); }}
+                                            onClick={() => { resetDiagnosticInputs() }}
                                             style={PatientStyles.resetButtonSmall}
                                         >
                                             Reset
@@ -3295,6 +3336,9 @@ export default function PatientDetail() {
     };
     const renderPreviewUI = () => {
         if (!previewData) return null;
+        if (loading) {
+            return <div style={PatientStyles.loadingText}>Loading preview data...</div>;
+        }
 
         return (
             <>
